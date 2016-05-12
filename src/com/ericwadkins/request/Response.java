@@ -14,9 +14,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * An immutable response object. This class takes in an HttpURLConnection, reads from
- * the input stream, and parses the body of the response into text, as well as JSON data
- * when applicable. It also stores other relevant information from the header.
+ * An immutable response object. This class takes in an HttpURLConnection, reads
+ * from the input stream, and parses the body of the response into text, as well
+ * as JSON data when applicable. It also stores other relevant information from
+ * the header.
+ * 
  * @author ericwadkins
  */
 public class Response {
@@ -28,18 +30,26 @@ public class Response {
 	private final Map<String, List<String>> headerFields;
 	private final int statusCode;
 	private final long date;
-	
+
 	/**
 	 * Constructs a Response object with the specified data.
-	 * @param text the text of the body
-	 * @param jsonObj a JSONObject when applicable, should be null otherwise
-	 * @param jsonArr a JSONArray when applicable, should be null otherwise
-	 * @param headerFields a map of headers, which maps the header names to values
-	 * @param statusCode the status/response code
-	 * @param date the date the response was sent, should be 0 if not known
+	 * 
+	 * @param text
+	 *            the text of the body
+	 * @param jsonObj
+	 *            a JSONObject when applicable, should be null otherwise
+	 * @param jsonArr
+	 *            a JSONArray when applicable, should be null otherwise
+	 * @param headerFields
+	 *            a map of headers, which maps the header names to values
+	 * @param statusCode
+	 *            the status/response code
+	 * @param date
+	 *            the date the response was sent, should be 0 if not known
 	 */
 	public Response(String text, JSONObject jsonObj, JSONArray jsonArr,
-			Map<String, List<String>> headerFields, int statusCode, long date) {
+			Map<String, List<String>> headerFields,
+			int statusCode, long date) {
 		this.text = text;
 		this.jsonObj = jsonObj;
 		this.jsonArr = jsonArr;
@@ -47,16 +57,18 @@ public class Response {
 		this.statusCode = statusCode;
 		this.date = date;
 	}
-	
+
 	/**
 	 * Reads from the connection's InputStream and produces a response.
-	 * @param connection the connection
+	 * 
+	 * @param connection
+	 *            the connection
 	 * @return the response, null if an error occurs
 	 */
 	public static Response parse(HttpURLConnection connection) {
-		try (InputStream in = connection.getInputStream())
-		{
-			Map<String, List<String>> headerFields = connection.getHeaderFields();
+		try (InputStream in = connection.getInputStream()) {
+			Map<String, List<String>> headerFields =
+					connection.getHeaderFields();
 			int statusCode = connection.getResponseCode();
 			long date = connection.getDate();
 			BufferedReader br = new BufferedReader(new InputStreamReader(in));
@@ -73,18 +85,22 @@ public class Response {
 			} catch (JSONException e1) {
 				try {
 					jsonArr = new JSONArray(body);
-				} catch (JSONException e2) {}
+				} catch (JSONException e2) {
+				}
 			}
-			return new Response(body, jsonObj, jsonArr, headerFields, statusCode, date);
+			return new Response(body, jsonObj, jsonArr, headerFields,
+					statusCode, date);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Whether the response could be parsed into a JSONObject or not.
-	 * @return true if this response could parse the body into a JSONObject, false otherwise
+	 * 
+	 * @return true if this response could parse the body into a JSONObject,
+	 *         false otherwise
 	 */
 	public boolean isJsonObject() {
 		return jsonObj != null;
@@ -92,14 +108,17 @@ public class Response {
 
 	/**
 	 * Whether the response could be parsed into a JSONArray or not.
-	 * @return true if this response could parse the body into a JSONArray, false otherwise
+	 * 
+	 * @return true if this response could parse the body into a JSONArray,
+	 *         false otherwise
 	 */
 	public boolean isJsonArray() {
 		return jsonArr != null;
 	}
-	
+
 	/**
 	 * Returns the body as received, in its text format.
+	 * 
 	 * @return the body's text
 	 */
 	public String getText() {
@@ -108,6 +127,7 @@ public class Response {
 
 	/**
 	 * Returns the JSONObject if parsing the text into JSON data was successful.
+	 * 
 	 * @return the JSONObject if it could be parsed, null otherwise
 	 */
 	public JSONObject getJsonObject() {
@@ -116,14 +136,16 @@ public class Response {
 
 	/**
 	 * Returns the JSONArray if parsing the text into JSON data was successful.
+	 * 
 	 * @return the JSONArray if it could be parsed, null otherwise
 	 */
 	public JSONArray getJsonArray() {
 		return jsonArr;
 	}
-	
+
 	/**
 	 * Returns the header fields in the response's header.
+	 * 
 	 * @return a map of the header fields, mapping keys to values
 	 */
 	public Map<String, List<String>> getHeaderFields() {
@@ -132,36 +154,40 @@ public class Response {
 
 	/**
 	 * Returns the header values associated with the specified field.
+	 * 
 	 * @return the header values, or null if there are none
 	 */
 	public List<String> getHeaderField(String field) {
 		return headerFields.get(field);
 	}
-	
+
 	/**
 	 * Returns the status line of the response.
+	 * 
 	 * @return the status
 	 */
 	public String getStatusLine() {
 		return headerFields.get(null).get(0);
 	}
-	
+
 	/**
 	 * Returns the status code of the response.
+	 * 
 	 * @return the status code
 	 */
 	public int getStatusCode() {
 		return statusCode;
 	}
-	
+
 	/**
 	 * Returns the date the response was sent.
+	 * 
 	 * @return the date the response was sent, 0 if it is unknown
 	 */
 	public long getDate() {
 		return date;
 	}
-	
+
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
@@ -173,5 +199,5 @@ public class Response {
 		sb.append(text);
 		return sb.toString();
 	}
-	
+
 }
