@@ -115,8 +115,9 @@ public class Request {
 	 * setMethod() instead of by calling the specific GET, POST, etc. methods.
 	 * 
 	 * @return the response object
+	 * @throws Exception if an error occurs
 	 */
-	public Response send() {
+	public Response send() throws Exception {
 		Method method;
 		Response response = null;
 		try {
@@ -125,7 +126,7 @@ public class Request {
 		} catch (NoSuchMethodException | SecurityException
 				| IllegalAccessException | IllegalArgumentException
 				| InvocationTargetException e) {
-			e.printStackTrace();
+			throw e;
 		}
 		return response;
 	}
@@ -136,8 +137,9 @@ public class Request {
 	 * @param urlString
 	 *            the URL
 	 * @return the response object
+	 * @throws IOException if an error occurs
 	 */
-	public static Response GET(String urlString) {
+	public static Response GET(String urlString) throws IOException {
 		return new Request(urlString).GET();
 	}
 
@@ -145,8 +147,9 @@ public class Request {
 	 * Sends a GET request with this request object.
 	 * 
 	 * @return the response object
+	 * @throws IOException if an error occurs
 	 */
-	public Response GET() {
+	public Response GET() throws IOException {
 		HttpURLConnection connection = null;
 		try {
 			connection = connect();
@@ -155,19 +158,19 @@ public class Request {
 			Response response = Response.parse(connection);
 			return response;
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		} finally {
 			disconnect(connection);
 		}
-		return null;
 	}
 
 	/**
 	 * Sends a POST request with this request object.
 	 * 
 	 * @return the response object
+	 * @throws IOException if an error occurs
 	 */
-	public Response POST() {
+	public Response POST() throws IOException {
 		HttpURLConnection connection = null;
 		try {
 			connection = connect();
@@ -179,19 +182,19 @@ public class Request {
 			Response response = Response.parse(connection);
 			return response;
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		} finally {
 			disconnect(connection);
 		}
-		return null;
 	}
 
 	/**
 	 * Sends a PUT request with this request object.
 	 * 
 	 * @return the response object
+	 * @throws IOException if an error occurs
 	 */
-	public Response PUT() {
+	public Response PUT() throws IOException {
 		HttpURLConnection connection = null;
 		try {
 			connection = connect();
@@ -203,19 +206,19 @@ public class Request {
 			Response response = Response.parse(connection);
 			return response;
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		} finally {
 			disconnect(connection);
 		}
-		return null;
 	}
 
 	/**
 	 * Sends a DELETE request with this request object.
 	 * 
 	 * @return the response object
+	 * @throws IOException if an error occurs
 	 */
-	public Response DELETE() {
+	public Response DELETE() throws IOException {
 		HttpURLConnection connection = null;
 		try {
 			connection = connect();
@@ -225,11 +228,10 @@ public class Request {
 			Response response = Response.parse(connection);
 			return response;
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		} finally {
 			disconnect(connection);
 		}
-		return null;
 	}
 
 	/**
@@ -476,14 +478,15 @@ public class Request {
 	 * 
 	 * @param file
 	 * @return the complete raw data
+	 * @throws IOException if an error occurs
 	 */
-	public String addRawData(File file) {
+	public String addRawData(File file) throws IOException {
 		bodyType = BodyType.RAW;
 		try {
 			rawData.append(new String(Files.readAllBytes(Paths.get(
 					file.getAbsolutePath())), Charset.forName(charset)));
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		}
 		return rawData.toString();
 	}
@@ -552,13 +555,11 @@ public class Request {
 	 * @return the JSON data, in the form of an Object (is an instance of a
 	 *         JSONObject or a JSONArray)
 	 */
-	public Object clearJsonData() {
+	public Object clearJsonData() throws JSONException {
 		Object data = null;
 		try {
 			data = (jsonObjData != null ? new JSONObject(jsonObjData) :
 				new JSONArray(jsonArrData));
-		} catch (JSONException e) {
-			e.printStackTrace();
 		} finally {
 			jsonObjData = null;
 			jsonArrData = null;
@@ -572,13 +573,14 @@ public class Request {
 	 * 
 	 * @param bytes
 	 * @return the complete binary data
+	 * @throws IOException if an error occurs
 	 */
-	public byte[] addBinaryData(byte[] bytes) {
+	public byte[] addBinaryData(byte[] bytes) throws IOException {
 		bodyType = BodyType.BINARY;
 		try {
 			binaryData.write(bytes);
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		}
 		return binaryData.toByteArray();
 	}
@@ -589,14 +591,15 @@ public class Request {
 	 * 
 	 * @param bytes
 	 * @return the complete binary data
+	 * @throws IOException if an error occurs
 	 */
-	public byte[] addBinaryData(File file) {
+	public byte[] addBinaryData(File file) throws IOException {
 		bodyType = BodyType.BINARY;
 		try {
 			binaryData.write(Files.readAllBytes(Paths.get(
 					file.getAbsolutePath())));
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		}
 		return binaryData.toByteArray();
 	}
@@ -671,8 +674,9 @@ public class Request {
 	 * Adds the body to the request depending on the request's BodyType
 	 * 
 	 * @param connection
+	 * @throws IOException if an error occurs
 	 */
-	private void addBody(HttpURLConnection connection) {
+	private void addBody(HttpURLConnection connection) throws IOException {
 		boolean contentTypeSet = false;
 		for (String key : requestProperties.keySet()) {
 			if (key.equalsIgnoreCase("Content-Type")) {
@@ -720,8 +724,9 @@ public class Request {
 	 * Writes the form data to the connection's output stream
 	 * 
 	 * @param connection
+	 * @throws IOException if an error occurs
 	 */
-	private void addFormData(HttpURLConnection connection) {
+	private void addFormData(HttpURLConnection connection) throws IOException {
 		try (OutputStream output = connection.getOutputStream();
 				PrintWriter writer = new PrintWriter(
 						new OutputStreamWriter(output), false)) {
@@ -751,7 +756,7 @@ public class Request {
 							Files.copy(file.toPath(), output);
 							output.flush();
 						} catch (IOException e) {
-							e.printStackTrace();
+							throw e;
 						}
 						writer.append(CRLF).flush();
 					} else if (dataType.getKey() == FormDataType.BINARY_FILE) {
@@ -772,7 +777,7 @@ public class Request {
 							Files.copy(file.toPath(), output);
 							output.flush();
 						} catch (IOException e) {
-							e.printStackTrace();
+							throw e;
 						}
 						writer.append(CRLF).flush();
 					}
@@ -780,7 +785,7 @@ public class Request {
 			}
 			writer.append("--" + boundary + "--").append(CRLF).flush();
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		}
 	}
 
@@ -788,8 +793,9 @@ public class Request {
 	 * Writes the encoded URL form data to the connection's output stream
 	 * 
 	 * @param connection
+	 * @throws IOException if an error occurs
 	 */
-	private void addEncodedFormData(HttpURLConnection connection) {
+	private void addEncodedFormData(HttpURLConnection connection) throws IOException {
 		try (OutputStream output = connection.getOutputStream()) {
 			StringBuilder sb = new StringBuilder();
 			for (String key : encodedFormData.keySet()) {
@@ -802,7 +808,7 @@ public class Request {
 			String encodedData = sb.substring(0, sb.length() - 1);
 			output.write(encodedData.getBytes());
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		}
 	}
 
@@ -810,13 +816,14 @@ public class Request {
 	 * Writes the raw data to the connection's output stream
 	 * 
 	 * @param connection
+	 * @throws IOException if an error occurs
 	 */
-	private void addRawData(HttpURLConnection connection) {
+	private void addRawData(HttpURLConnection connection) throws IOException {
 		try (OutputStream output = connection.getOutputStream()) {
 			String encodedData = rawData.toString();
 			output.write(encodedData.getBytes());
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		}
 	}
 
@@ -824,14 +831,15 @@ public class Request {
 	 * Writes the JSON data to the connection's output stream
 	 * 
 	 * @param connection
+	 * @throws IOException if an error occurs
 	 */
-	private void addJsonData(HttpURLConnection connection) {
+	private void addJsonData(HttpURLConnection connection) throws IOException {
 		try (OutputStream output = connection.getOutputStream()) {
 			String encodedData = (jsonObjData != null ?
 					jsonObjData :jsonArrData).toString();
 			output.write(encodedData.getBytes());
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		}
 	}
 
@@ -839,12 +847,13 @@ public class Request {
 	 * Writes the binary data to the connection's output stream
 	 * 
 	 * @param connection
+	 * @throws IOException if an error occurs
 	 */
-	private void addBinaryData(HttpURLConnection connection) {
+	private void addBinaryData(HttpURLConnection connection) throws IOException {
 		try (OutputStream output = connection.getOutputStream()) {
 			binaryData.writeTo(output);
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		}
 	}
 
@@ -852,7 +861,7 @@ public class Request {
 	 * A helper method that creates and returns a connection
 	 * 
 	 * @return the connection
-	 * @throws IOException
+	 * @throws IOException if an error occurs
 	 */
 	private HttpURLConnection connect() throws IOException {
 		if (url == null) {

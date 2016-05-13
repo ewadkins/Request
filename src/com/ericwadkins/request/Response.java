@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ public class Response {
 	private final String text;
 	private final JSONObject jsonObj;
 	private final JSONArray jsonArr;
+	private final String urlString;
 	private final Map<String, List<String>> headerFields;
 	private final int statusCode;
 	private final long date;
@@ -48,11 +50,12 @@ public class Response {
 	 *            the date the response was sent, should be 0 if not known
 	 */
 	public Response(String text, JSONObject jsonObj, JSONArray jsonArr,
-			Map<String, List<String>> headerFields,
+			String urlString, Map<String, List<String>> headerFields,
 			int statusCode, long date) {
 		this.text = text;
 		this.jsonObj = jsonObj;
 		this.jsonArr = jsonArr;
+		this.urlString = urlString;
 		this.headerFields = new HashMap<>(headerFields);
 		this.statusCode = statusCode;
 		this.date = date;
@@ -63,10 +66,13 @@ public class Response {
 	 * 
 	 * @param connection
 	 *            the connection
-	 * @return the response, null if an error occurs
+	 * @return the response
+	 * @throws IOException if an error occurs
 	 */
-	public static Response parse(HttpURLConnection connection) {
+	public static Response parse(HttpURLConnection connection)
+			throws IOException {
 		try (InputStream in = connection.getInputStream()) {
+			String urlString = connection.getURL().toString();
 			Map<String, List<String>> headerFields =
 					connection.getHeaderFields();
 			int statusCode = connection.getResponseCode();
@@ -88,12 +94,11 @@ public class Response {
 				} catch (JSONException e2) {
 				}
 			}
-			return new Response(body, jsonObj, jsonArr, headerFields,
-					statusCode, date);
+			return new Response(body, jsonObj, jsonArr, urlString,
+					headerFields, statusCode, date);
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
 		}
-		return null;
 	}
 
 	/**
@@ -141,6 +146,15 @@ public class Response {
 	 */
 	public JSONArray getJsonArray() {
 		return jsonArr;
+	}
+
+	/**
+	 * Returns the url string of the response.
+	 * 
+	 * @return the url string
+	 */
+	public String getURL() {
+		return urlString;
 	}
 
 	/**
