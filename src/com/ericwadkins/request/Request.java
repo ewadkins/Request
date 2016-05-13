@@ -83,13 +83,23 @@ public class Request {
 	private static final String charset = "utf-8";
 
 	/**
-	 * Constructs a Request object with the specified URL.
+	 * Constructs a Request object with the specified URL string.
 	 * 
 	 * @param urlString
 	 *            the URL
 	 */
 	public Request(String urlString) {
 		setURL(urlString);
+	}
+	
+	/**
+	 * Constructs a Request object with the specified URL.
+	 * 
+	 * @param urlString
+	 *            the URL
+	 */
+	public Request(URL url) {
+		setURL(url);
 	}
 
 	/**
@@ -228,11 +238,23 @@ public class Request {
 	 * @param urlString
 	 */
 	public void setURL(String urlString) {
+		if (!urlString.startsWith("http://")) {
+			urlString = "http://" + urlString;
+		}
 		try {
 			this.url = new URL(urlString);
 		} catch (MalformedURLException e) {
 			throw new IllegalArgumentException(e.getMessage());
 		}
+	}
+
+	/**
+	 * Sets this request object's URL.
+	 * 
+	 * @param url
+	 */
+	public void setURL(URL url) {
+		this.url = url;
 	}
 
 	/**
