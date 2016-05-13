@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -115,11 +113,11 @@ public class Request {
 	 * setMethod() instead of by calling the specific GET, POST, etc. methods.
 	 * 
 	 * @return the response object
-	 * @throws Exception if an error occurs
+	 * @throws IOException if an error occurs
 	 */
-	public Response send() throws Exception {
-		Method method;
+	public Response send() throws IOException {
 		Response response = null;
+		/*Method method;
 		try {
 			method = getClass().getMethod(requestMethod.name());
 			response = (Response) method.invoke(this);
@@ -127,6 +125,12 @@ public class Request {
 				| IllegalAccessException | IllegalArgumentException
 				| InvocationTargetException e) {
 			throw e;
+		}*/
+		switch (requestMethod) {
+		case GET: return GET();
+		case POST: return POST();
+		case PUT: return PUT();
+		case DELETE: return DELETE();
 		}
 		return response;
 	}
