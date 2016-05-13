@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -34,6 +36,15 @@ import org.json.JSONObject;
 public class Request {
 
 	/**
+	 * The type of request to send.
+	 * 
+	 * @author ericwadkins
+	 */
+	public static enum RequestMethod {
+		GET, POST, PUT, DELETE
+	};
+
+	/**
 	 * The type of data to be added to the body.
 	 * 
 	 * @author ericwadkins
@@ -53,6 +64,7 @@ public class Request {
 
 	// Data storage
 	private URL url;
+	private RequestMethod requestMethod = RequestMethod.GET;
 	private final Map<String, String> requestProperties = new HashMap<>();
 	private BodyType bodyType = BodyType.RAW;
 	private final Map<String, List<Map.Entry<FormDataType, Object>>> formData =
@@ -85,6 +97,27 @@ public class Request {
 	 * setURL(urlString).
 	 */
 	public Request() {
+	}
+
+	/**
+	 * Sends a request of the set method with this request object. This method
+	 * is useful when calls must be made programmatically in conjuction with
+	 * setMethod() instead of by calling the specific GET, POST, etc. methods.
+	 * 
+	 * @return the response object
+	 */
+	public Response send() {
+		Method method;
+		Response response = null;
+		try {
+			method = getClass().getMethod(requestMethod.name());
+			response = (Response) method.invoke(this);
+		} catch (NoSuchMethodException | SecurityException
+				| IllegalAccessException | IllegalArgumentException
+				| InvocationTargetException e) {
+			e.printStackTrace();
+		}
+		return response;
 	}
 
 	/**
@@ -209,6 +242,39 @@ public class Request {
 	 */
 	public String getURL() {
 		return url.toString();
+	}
+	
+	/**
+	 * Sets this request object's method to the specified requestMethod. This
+	 * method is useful when calls must be made programmatically in conjuction
+	 * with send() instead of by calling the specific GET, POST, etc. methods.
+	 * 
+	 * @param requestMethod the method
+	 */
+	public void setMethod(RequestMethod requestMethod) {
+		this.requestMethod = requestMethod;
+	}
+
+	/**
+	 * Sets this request object's method to the specified requestMethod. This
+	 * method is useful when calls must be made programmatically in conjuction
+	 * with send() instead of by calling the specific GET, POST, etc. methods.
+	 * 
+	 * @param requestMethod the method represented as a string
+	 */
+	public void setMethod(String method) {
+		this.requestMethod = RequestMethod.valueOf(method.toUpperCase());
+	}
+	
+	/**
+	 * Returns this request object's method. This method is useful when calls
+	 * must be made programmatically in conjuction with send() and setMethod()
+	 * instead of by calling the specific GET, POST, etc. methods.
+	 * 
+	 * @return the method
+	 */
+	public RequestMethod getMethod() {
+		return requestMethod;
 	}
 
 	/**
