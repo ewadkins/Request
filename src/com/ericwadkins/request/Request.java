@@ -24,6 +24,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.ericwadkins.request.FormData.FormDataType;
+
 /**
  * A mutable request object. This class provides methods to send HTTP requests,
  * and is designed to act as a wrapper for the HttpURLConnection class, as well
@@ -51,21 +53,12 @@ public class Request {
 		FORM_DATA, X_WWW_FORM_URLENCODED, RAW, JSON, BINARY
 	};
 
-	/**
-	 * The type of data contained in each part of the multipart form-data.
-	 * 
-	 * @author ericwadkins
-	 */
-	public static enum FormDataType {
-		FIELD, RAW_FILE, BINARY_FILE
-	}
-
 	// Data storage
 	private URL url;
 	private RequestMethod requestMethod = RequestMethod.GET;
 	private final Map<String, String> requestProperties = new HashMap<>();
 	private BodyType bodyType = BodyType.RAW;
-	private final Map<String, List<Map.Entry<FormDataType, Object>>> formData =
+	private final Map<String, List<FormData>> formData =
 			new HashMap<>();
 	private final Map<String, List<String>> encodedFormData = new HashMap<>();
 	private StringBuilder rawData = new StringBuilder();
@@ -78,13 +71,12 @@ public class Request {
 	private final String boundary =
 			Long.toHexString(System.currentTimeMillis());
 	private static final String CRLF = "\r\n";
-	private static final String charset = "utf-8";
+	private static final Charset defaultCharset = Charset.forName("utf-8");
 
 	/**
 	 * Constructs a Request object with the specified URL string.
 	 * 
-	 * @param urlString
-	 *            the URL
+	 * @param urlString the URL
 	 */
 	public Request(String urlString) {
 		setURL(urlString);
@@ -93,8 +85,7 @@ public class Request {
 	/**
 	 * Constructs a Request object with the specified URL.
 	 * 
-	 * @param urlString
-	 *            the URL
+	 * @param urlString the URL
 	 */
 	public Request(URL url) {
 		setURL(url);
@@ -138,8 +129,7 @@ public class Request {
 	/**
 	 * A static convenience method for quick GET requests to the specified URL.
 	 * 
-	 * @param urlString
-	 *            the URL
+	 * @param urlString the URL
 	 * @return the response object
 	 * @throws IOException if an error occurs
 	 */
@@ -257,7 +247,7 @@ public class Request {
 	/**
 	 * Sets this request object's URL.
 	 * 
-	 * @param url
+	 * @param url the url
 	 */
 	public void setURL(URL url) {
 		this.url = url;
@@ -352,20 +342,53 @@ public class Request {
 	}
 
 	/**
+	 * Adds a field with the specified key, value and charset to the form, and
+	 * updates the body to use multipart/form-data in the future.
+	 * 
+	 * @param key
+	 * @param value
+	 * @return the form data associated with the key
+	 */
+	public List<FormData> addFormField(String key, String value,
+			Charset charset) {
+		bodyType = BodyType.FORM_DATA;
+		if (!formData.containsKey(key)) {
+			formData.put(key, new ArrayList<FormData>());
+		}
+		formData.get(key).add(new FormData(value, charset));
+		return new ArrayList<>(formData.get(key));
+	}
+
+	/**
 	 * Adds a field with the specified key and value to the form, and updates
 	 * the body to use multipart/form-data in the future.
 	 * 
 	 * @param key
 	 * @param value
+	 * @return the form data associated with the key
 	 */
-	public void addFormField(String key, String value) {
+	public List<FormData> addFormField(String key, String value) {
+		return addFormField(key, value, defaultCharset);
+	}
+
+	/**
+	 * Adds a raw file to the form with the specified key and charset, and
+	 * updates the body to use multipart/form-data in the future.
+	 * 
+	 * @param key
+	 * @param file
+	 * @param charset
+	 * @return the form data associated with the key
+	 */
+	public List<FormData> addFormRawFile(String key, File file,
+			Charset charset) {
 		bodyType = BodyType.FORM_DATA;
 		if (!formData.containsKey(key)) {
-			formData.put(key,
-					new ArrayList<Map.Entry<Request.FormDataType, Object>>());
+			formData.put(key, new ArrayList<FormData>());
 		}
-		formData.get(key).add(new AbstractMap.SimpleEntry<>(
-				FormDataType.FIELD, (Object) value));
+		formData.get(key).add(
+				new FormData(file, FormDataType.RAW_FILE, charset));
+		return new ArrayList<>(formData.get(key));
 	}
 
 	/**
@@ -374,40 +397,38 @@ public class Request {
 	 * 
 	 * @param key
 	 * @param file
+	 * @return the form data associated with the key
 	 */
-	public void addFormRawFile(String key, File file) {
-		bodyType = BodyType.FORM_DATA;
-		if (!formData.containsKey(key)) {
-			formData.put(key,
-					new ArrayList<Map.Entry<Request.FormDataType, Object>>());
-		}
-		formData.get(key).add(new AbstractMap.SimpleEntry<>(FormDataType.RAW_FILE, (Object) file));
+	public List<FormData> addFormRawFile(String key, File file) {
+		return addFormRawFile(key, file, defaultCharset);
 	}
 
 	/**
-	 * Adds a binary file to the form with the specified key, and updates the
-	 * body to use multipart/form-data in the future.
+	 * Adds a binary file to the form with the specified key and charset, and
+	 * updates the body to use multipart/form-data in the future.
 	 * 
 	 * @param key
 	 * @param file
+	 * @param defaultCharset
+	 * @return the form data associated with the key
 	 */
-	public void addFormBinaryFile(String key, File file) {
+	public List<FormData> addFormBinaryFile(String key, File file) {
 		bodyType = BodyType.FORM_DATA;
 		if (!formData.containsKey(key)) {
-			formData.put(key,
-					new ArrayList<Map.Entry<Request.FormDataType, Object>>());
+			formData.put(key, new ArrayList<FormData>());
 		}
-		formData.get(key).add(new AbstractMap.SimpleEntry<>(
-				FormDataType.BINARY_FILE, (Object) file));
+		formData.get(key).add(
+				new FormData(file, FormDataType.BINARY_FILE, defaultCharset));
+		return new ArrayList<>(formData.get(key));
 	}
 
 	/**
 	 * Removes the value with the specified key from the form, if it exists.
 	 * 
 	 * @param key
-	 * @return the value associated with the key, or null if there was none
+	 * @return the form data associated with the key, or null if there was none
 	 */
-	public List<Map.Entry<Request.FormDataType, Object>> removeFormField(
+	public List<FormData> removeFormField(
 			String key) {
 		return formData.remove(key);
 	}
@@ -415,11 +436,10 @@ public class Request {
 	/**
 	 * Removes all the values from the form.
 	 * 
-	 * @return a copy of the form
+	 * @return the form data
 	 */
-	public Map<String, List<Map.Entry<Request.FormDataType, Object>>> clearForm() {
-		Map<String, List<Map.Entry<Request.FormDataType, Object>>> data =
-				new HashMap<>(formData);
+	public Map<String, List<FormData>> clearForm() {
+		Map<String, List<FormData>> data = new HashMap<>(formData);
 		formData.clear();
 		return data;
 	}
@@ -431,7 +451,7 @@ public class Request {
 	 * 
 	 * @param key
 	 * @param value
-	 * @return the previous value associated with key, or null if there was none
+	 * @return the encoded URL form data associated with the key
 	 */
 	public List<String> addEncodedField(String key, String value) {
 		bodyType = BodyType.X_WWW_FORM_URLENCODED;
@@ -447,7 +467,8 @@ public class Request {
 	 * exists.
 	 * 
 	 * @param key
-	 * @return the value associated with the key, or null if there was none
+	 * @return the encoded URL form data associated with the key, or null if
+	 * there was none
 	 */
 	public List<String> removeEncodedField(String key) {
 		return encodedFormData.remove(key);
@@ -456,7 +477,7 @@ public class Request {
 	/**
 	 * Removes all the values from the encoded URL form.
 	 * 
-	 * @return a copy of the encoded URL form
+	 * @return the encoded URL form data
 	 */
 	public Map<String, List<String>> clearEncodedFields() {
 		Map<String, List<String>> data = new HashMap<>(encodedFormData);
@@ -469,7 +490,7 @@ public class Request {
 	 * text/plain in the future.
 	 * 
 	 * @param string
-	 * @return the complete raw data
+	 * @return the raw data
 	 */
 	public String addRawData(String string) {
 		bodyType = BodyType.RAW;
@@ -481,22 +502,18 @@ public class Request {
 	 * text/plain in the future.
 	 * 
 	 * @param file
-	 * @return the complete raw data
+	 * @return the raw data
 	 * @throws IOException if an error occurs
 	 */
 	public String addRawData(File file) throws IOException {
 		bodyType = BodyType.RAW;
-		try {
-			rawData.append(new String(Files.readAllBytes(Paths.get(
-					file.getAbsolutePath())), Charset.forName(charset)));
-		} catch (IOException e) {
-			throw e;
-		}
+		rawData.append(new String(Files.readAllBytes(Paths.get(
+				file.getAbsolutePath())), defaultCharset));
 		return rawData.toString();
 	}
 
 	/**
-	 * Removes all the raw data
+	 * Removes all the raw data.
 	 * 
 	 * @return the raw data
 	 */
@@ -511,12 +528,19 @@ public class Request {
 	 * use application/json in the future.
 	 * 
 	 * @param jsonObj
-	 *            the JSON object
+	 * @return the JSON data, in the form of an Object (is an instance of a
+	 *         JSONObject or a JSONArray)
 	 */
-	public void addJsonData(JSONObject jsonObj) {
+	public Object addJsonData(JSONObject jsonObj) {
+		Object data = null;
+		try {
+			data = (jsonObjData != null ? new JSONObject(jsonObjData) :
+				new JSONArray(jsonArrData));
+		} catch (JSONException e) {}
 		bodyType = BodyType.JSON;
 		this.jsonObjData = jsonObj;
 		this.jsonArrData = null;
+		return data;
 	}
 
 	/**
@@ -524,12 +548,19 @@ public class Request {
 	 * use application/json in the future.
 	 * 
 	 * @param jsonArr
-	 *            the JSON array
+	 * @return the JSON data, in the form of an Object (is an instance of a
+	 *         JSONObject or a JSONArray)
 	 */
-	public void addJsonData(JSONArray jsonArr) {
+	public Object addJsonData(JSONArray jsonArr) {
+		Object data = null;
+		try {
+			data = (jsonObjData != null ? new JSONObject(jsonObjData) :
+				new JSONArray(jsonArrData));
+		} catch (JSONException e) {}
 		bodyType = BodyType.JSON;
 		this.jsonObjData = null;
 		this.jsonArrData = jsonArr;
+		return data;
 	}
 
 	/**
@@ -537,20 +568,35 @@ public class Request {
 	 * use application/json in the future.
 	 * 
 	 * @param jsonArr
-	 *            the JSON array
+	 * @return the JSON data, in the form of an Object (is an instance of a
+	 *         JSONObject or a JSONArray)
+	 * @throws JSONException if the string could not be parsed into valid JSON
 	 */
-	public void addJsonData(String json) {
-		bodyType = BodyType.JSON;
-		jsonObjData = null;
-		jsonArrData = null;
+	public Object addJsonData(String json) throws JSONException {
+		Object data = null;
+		try {
+			data = (jsonObjData != null ? new JSONObject(jsonObjData) :
+				new JSONArray(jsonArrData));
+		} catch (JSONException e) {}
+		boolean added = false;
 		try {
 			jsonObjData = new JSONObject(json);
+			added = true;
 		} catch (JSONException e1) {
 			try {
 				jsonArrData = new JSONArray(json);
+				added = true;
 			} catch (JSONException e2) {
 			}
 		}
+		if (added) {
+			bodyType = BodyType.JSON;
+		}
+		else {
+			throw new JSONException(
+					"Could not be parsed into a JSONObject nor a JSONArray");
+		}
+		return data;
 	}
 
 	/**
@@ -581,11 +627,7 @@ public class Request {
 	 */
 	public byte[] addBinaryData(byte[] bytes) throws IOException {
 		bodyType = BodyType.BINARY;
-		try {
-			binaryData.write(bytes);
-		} catch (IOException e) {
-			throw e;
-		}
+		binaryData.write(bytes);
 		return binaryData.toByteArray();
 	}
 
@@ -599,12 +641,7 @@ public class Request {
 	 */
 	public byte[] addBinaryData(File file) throws IOException {
 		bodyType = BodyType.BINARY;
-		try {
-			binaryData.write(Files.readAllBytes(Paths.get(
-					file.getAbsolutePath())));
-		} catch (IOException e) {
-			throw e;
-		}
+		binaryData.write(Files.readAllBytes(Paths.get(file.getAbsolutePath())));
 		return binaryData.toByteArray();
 	}
 
@@ -735,26 +772,26 @@ public class Request {
 				PrintWriter writer = new PrintWriter(
 						new OutputStreamWriter(output), false)) {
 			for (String key : formData.keySet()) {
-				for (Map.Entry<FormDataType, Object> dataType :
+				for (FormData formData :
 					formData.get(key)) {
-					if (dataType.getKey() == FormDataType.FIELD) {
-						String value = (String) dataType.getValue();
+					if (formData.getType() == FormDataType.FIELD) {
+						String value = formData.getField();
 
 						writer.append("--" + boundary).append(CRLF);
 						writer.append("Content-Disposition: form-data; name=\""
 								+ key + "\"").append(CRLF);
 						writer.append("Content-Type: text/plain; charset="
-								+ charset).append(CRLF);
+								+ formData.getCharset()).append(CRLF);
 						writer.append(CRLF).append(value).append(CRLF).flush();
-					} else if (dataType.getKey() == FormDataType.RAW_FILE) {
-						File file = (File) dataType.getValue();
+					} else if (formData.getType() == FormDataType.RAW_FILE) {
+						File file = formData.getFile();
 
 						writer.append("--" + boundary).append(CRLF);
 						writer.append("Content-Disposition: form-data; name=\""
 								+ key + "\"; filename=\""
 								+ file.getName() + "\"").append(CRLF);
 						writer.append("Content-Type: text/plain; charset="
-								+ charset).append(CRLF);
+								+ formData.getCharset()).append(CRLF);
 						writer.append(CRLF).flush();
 						try {
 							Files.copy(file.toPath(), output);
@@ -763,8 +800,8 @@ public class Request {
 							throw e;
 						}
 						writer.append(CRLF).flush();
-					} else if (dataType.getKey() == FormDataType.BINARY_FILE) {
-						File file = (File) dataType.getValue();
+					} else if (formData.getType() == FormDataType.BINARY_FILE) {
+						File file = formData.getFile();
 
 						writer.append("--" + boundary).append(CRLF);
 						writer.append("Content-Disposition: form-data; name=\""
@@ -804,8 +841,8 @@ public class Request {
 			StringBuilder sb = new StringBuilder();
 			for (String key : encodedFormData.keySet()) {
 				for (String value : encodedFormData.get(key)) {
-					String encodedKey = URLEncoder.encode(key, charset);
-					String encodedValue = URLEncoder.encode(value, charset);
+					String encodedKey = URLEncoder.encode(key, defaultCharset.name());
+					String encodedValue = URLEncoder.encode(value, defaultCharset.name());
 					sb.append(encodedKey + "=" + encodedValue + "&");
 				}
 			}
