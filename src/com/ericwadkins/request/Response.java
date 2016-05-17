@@ -50,8 +50,8 @@ public class Response {
 	 *            the status/response code
 	 * @param date
 	 *            the date the response was sent, should be 0 if not known
-	 * @param protocol
-	 * 			  the protocol 
+	 * @param urlString
+	 *            the url
 	 */
 	public Response(String text, JSONObject jsonObj, JSONArray jsonArr,
 			Map<String, List<String>> headerFields, int statusCode, long date,
