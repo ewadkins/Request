@@ -64,8 +64,8 @@ public class Request {
 			new HashMap<>();
 	private final Map<String, List<String>> encodedFormData = new HashMap<>();
 	private StringBuilder rawData = new StringBuilder();
-	private JSONObject jsonObjData = new JSONObject();
-	private JSONArray jsonArrData = new JSONArray();
+	private JSONObject jsonObjData = null;
+	private JSONArray jsonArrData = null;
 	private final ByteArrayOutputStream binaryData =
 			new ByteArrayOutputStream();
 
@@ -462,6 +462,19 @@ public class Request {
 		formData.clear();
 		return data;
 	}
+	
+	/**
+	 * Returns a copy of the form data
+	 * 
+	 * @return the form data
+	 */
+	public Map<String, List<FormData>> getForm() {
+		Map<String, List<FormData>> data = new HashMap<>();
+		for (String key : formData.keySet()) {
+			data.put(key, new ArrayList<>(formData.get(key)));
+		}
+		return data;
+	}
 
 	/**
 	 * Adds a field with the specified key and value to the encoded URL form,
@@ -503,6 +516,19 @@ public class Request {
 		encodedFormData.clear();
 		return data;
 	}
+	
+	/**
+	 * Returns a copy of the encoded URL form data
+	 * 
+	 * @return the encoded URL form data
+	 */
+	public Map<String, List<String>> getEncodedFields() {
+		Map<String, List<String>> data = new HashMap<>();
+		for (String key : encodedFormData.keySet()) {
+			data.put(key, new ArrayList<>(encodedFormData.get(key)));
+		}
+		return data;
+	}
 
 	/**
 	 * Appends the string to the raw data, and updates the body to use
@@ -541,21 +567,26 @@ public class Request {
 		rawData = new StringBuilder();
 		return string;
 	}
+	
+	/**
+	 * Returns the raw data
+	 * 
+	 * @return the raw data
+	 */
+	public String getRawData() {
+		return rawData.toString();
+	}
 
 	/**
 	 * Sets the JSON data to the specified JSON object, and updates the body to
 	 * use application/json in the future.
 	 * 
 	 * @param jsonObj
-	 * @return the JSON data, in the form of an Object (is an instance of a
-	 *         JSONObject or a JSONArray)
+	 * @return the previous JSON data, in the form of an Object (is an instance
+	 * of a JSONObject or a JSONArray), or null if there was none
 	 */
 	public Object addJsonData(JSONObject jsonObj) {
-		Object data = null;
-		try {
-			data = (jsonObjData != null ? new JSONObject(jsonObjData) :
-				new JSONArray(jsonArrData));
-		} catch (JSONException e) {}
+		Object data = (jsonObjData != null ? jsonObjData : jsonArrData);
 		bodyType = BodyType.JSON;
 		this.jsonObjData = jsonObj;
 		this.jsonArrData = null;
@@ -567,15 +598,11 @@ public class Request {
 	 * use application/json in the future.
 	 * 
 	 * @param jsonArr
-	 * @return the JSON data, in the form of an Object (is an instance of a
-	 *         JSONObject or a JSONArray)
+	 * @return the previous JSON data, in the form of an Object (is an instance
+	 * of a JSONObject or a JSONArray), or null if there was none
 	 */
 	public Object addJsonData(JSONArray jsonArr) {
-		Object data = null;
-		try {
-			data = (jsonObjData != null ? new JSONObject(jsonObjData) :
-				new JSONArray(jsonArrData));
-		} catch (JSONException e) {}
+		Object data = (jsonObjData != null ? jsonObjData : jsonArrData);
 		bodyType = BodyType.JSON;
 		this.jsonObjData = null;
 		this.jsonArrData = jsonArr;
@@ -587,16 +614,12 @@ public class Request {
 	 * use application/json in the future.
 	 * 
 	 * @param jsonArr
-	 * @return the JSON data, in the form of an Object (is an instance of a
-	 *         JSONObject or a JSONArray)
+	 * @return the previous JSON data, in the form of an Object (is an instance
+	 * of a JSONObject or a JSONArray), or null if there was none
 	 * @throws JSONException if the string could not be parsed into valid JSON
 	 */
 	public Object addJsonData(String json) throws JSONException {
-		Object data = null;
-		try {
-			data = (jsonObjData != null ? new JSONObject(jsonObjData) :
-				new JSONArray(jsonArrData));
-		} catch (JSONException e) {}
+		Object data = (jsonObjData != null ? jsonObjData : jsonArrData);
 		boolean added = false;
 		try {
 			jsonObjData = new JSONObject(json);
@@ -621,17 +644,29 @@ public class Request {
 	/**
 	 * Removes the JSON data.
 	 * 
-	 * @return the JSON data, in the form of an Object (is an instance of a
-	 *         JSONObject or a JSONArray)
+	 * @return the previous JSON data, in the form of an Object (is an instance
+	 * of a JSONObject or a JSONArray), or null if there was none
 	 */
-	public Object clearJsonData() throws JSONException {
+	public Object clearJsonData() {
+		Object data = (jsonObjData != null ? jsonObjData : jsonArrData);
+		jsonObjData = null;
+		jsonArrData = null;
+		return data;
+	}
+
+	/**
+	 * Returns a copy of the JSON data.
+	 * 
+	 * @return a copy of the JSON data, in the form of an Object (is an instance
+	 * of a JSONObject or a JSONArray), or null if there is none
+	 */
+	public Object getJsonData() {
 		Object data = null;
-		try {
-			data = (jsonObjData != null ? new JSONObject(jsonObjData) :
-				new JSONArray(jsonArrData));
-		} finally {
-			jsonObjData = null;
-			jsonArrData = null;
+		if (jsonObjData != null) {
+			data = new JSONObject(jsonObjData);
+		}
+		else if (jsonArrData != null) {
+			
 		}
 		return data;
 	}
@@ -672,6 +707,16 @@ public class Request {
 	public byte[] clearBinaryData() {
 		byte[] data = binaryData.toByteArray();
 		binaryData.reset();
+		return data;
+	}
+
+	/**
+	 * Returns the binary data.
+	 * 
+	 * @return the binary data
+	 */
+	public byte[] getBinaryData() {
+		byte[] data = binaryData.toByteArray();
 		return data;
 	}
 
@@ -774,35 +819,30 @@ public class Request {
 			if (!contentTypeSet)
 				setRequestPropertyImmediate("Content-Type",
 						"multipart/form-data; boundary=" + boundary,connection);
-			addFormData(connection);
-			break;
+			addFormData(connection); break;
 		case X_WWW_FORM_URLENCODED:
 			if (!contentTypeSet)
 				setRequestPropertyImmediate("Content-Type",
 						"application/x-www-form-urlencoded", connection);
-			addEncodedFormData(connection);
-			break;
+			addEncodedFormData(connection); break;
 		case RAW:
 			if (!contentTypeSet)
 				setRequestPropertyImmediate("Content-Type",
 						"text/plain", connection);
-			addRawData(connection);
-			break;
+			addRawData(connection); break;
 		case JSON:
 			if (!contentTypeSet)
 				setRequestPropertyImmediate("Content-Type",
 						"application/json", connection);
-			addJsonData(connection);
-			break;
+			addJsonData(connection); break;
 		case BINARY:
 			if (!contentTypeSet)
 				setRequestPropertyImmediate("Content-Type",
 						"application/octet-stream", connection);
-			addBinaryData(connection);
-			break;
+			addBinaryData(connection); break;
 		default:
-			throw new UnsupportedOperationException(bodyType.name() 
-					+ " not supported");
+			throw new UnsupportedOperationException(
+					"Request does not support body type " + bodyType.name());
 		}
 	}
 
@@ -869,7 +909,9 @@ public class Request {
 					}
 				}
 			}
-			writer.append("--" + boundary + "--").append(CRLF).flush();
+			if (formData.size() > 0) {
+				writer.append("--" + boundary + "--").append(CRLF).flush();
+			}
 		} catch (IOException e) {
 			throw e;
 		}
@@ -886,12 +928,17 @@ public class Request {
 			StringBuilder sb = new StringBuilder();
 			for (String key : encodedFormData.keySet()) {
 				for (String value : encodedFormData.get(key)) {
-					String encodedKey = URLEncoder.encode(key, defaultCharset.name());
-					String encodedValue = URLEncoder.encode(value, defaultCharset.name());
+					String encodedKey = 
+							URLEncoder.encode(key, defaultCharset.name());
+					String encodedValue = 
+							URLEncoder.encode(value, defaultCharset.name());
 					sb.append(encodedKey + "=" + encodedValue + "&");
 				}
 			}
-			String encodedData = sb.substring(0, sb.length() - 1);
+			String encodedData = sb.toString();
+			if (sb.length() > 0) {
+				encodedData = sb.substring(0, sb.length() - 1);
+			}
 			output.write(encodedData.getBytes());
 		} catch (IOException e) {
 			throw e;
@@ -921,9 +968,14 @@ public class Request {
 	 */
 	private void addJsonData(URLConnection connection) throws IOException {
 		try (OutputStream output = connection.getOutputStream()) {
-			String encodedData = (jsonObjData != null ?
-					jsonObjData :jsonArrData).toString();
-			output.write(encodedData.getBytes());
+			String jsonData = "";
+			if (jsonObjData != null) {
+				jsonData = jsonObjData.toString();
+			}
+			else if (jsonArrData != null) {
+				jsonData = jsonArrData.toString();
+			}
+			output.write(jsonData.getBytes());
 		} catch (IOException e) {
 			throw e;
 		}

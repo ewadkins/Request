@@ -41,6 +41,7 @@ public class FormData {
 	
 	/**
 	 * Constructs a form data object of the specified file type and charset.
+	 * If the file type is binary, the charset is ignored.
 	 * 
 	 * @param file the file
 	 * @param dataType the type of file
