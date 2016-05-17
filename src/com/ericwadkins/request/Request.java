@@ -666,7 +666,9 @@ public class Request {
 			data = new JSONObject(jsonObjData);
 		}
 		else if (jsonArrData != null) {
-			
+			try {
+				data = new JSONArray(jsonArrData);
+			} catch (JSONException e) {}
 		}
 		return data;
 	}
