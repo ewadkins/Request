@@ -8,17 +8,19 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import javax.net.ssl.HttpsURLConnection;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -27,16 +29,16 @@ import org.json.JSONObject;
 import com.ericwadkins.request.FormData.FormDataType;
 
 /**
- * A mutable request object. This class provides methods to send HTTP requests,
- * and is designed to act as a wrapper for the HttpURLConnection class, as well
- * as provide extra data management methods.
+ * A mutable request object. This class provides methods to send HTTP and HTTPS
+ * requests, and is designed to act as a wrapper for the URLConnection class,
+ * as well as provide extra data management methods.
  * 
  * @author ericwadkins
  */
 public class Request {
 
 	/**
-	 * The type of request to send.
+	 * The type of request method to send.
 	 * 
 	 * @author ericwadkins
 	 */
@@ -74,7 +76,9 @@ public class Request {
 	private static final Charset defaultCharset = Charset.forName("utf-8");
 
 	/**
-	 * Constructs a Request object with the specified URL string.
+	 * Constructs a Request object with the specified URL string. If a protocol
+	 * is not specified, HTTP will be used. Valid protocols include HTTP and
+	 * HTTPS.
 	 * 
 	 * @param urlString the URL
 	 */
@@ -83,7 +87,8 @@ public class Request {
 	}
 	
 	/**
-	 * Constructs a Request object with the specified URL.
+	 * Constructs a Request object with the specified URL. Valid protocols
+	 * include HTTP and HTTPS.
 	 * 
 	 * @param urlString the URL
 	 */
@@ -93,7 +98,7 @@ public class Request {
 
 	/**
 	 * Constructs an empty Request object. Must later set the URL with
-	 * setURL(urlString).
+	 * setURL().
 	 */
 	public Request() {
 	}
@@ -144,9 +149,10 @@ public class Request {
 	 * @throws IOException if an error occurs
 	 */
 	public Response GET() throws IOException {
-		HttpURLConnection connection = null;
+		URLConnection connection = null;
 		try {
 			connection = connect();
+			setRequestMethod(connection, "GET");
 			connection.setUseCaches(false);
 			applyRequestProperties(connection);
 			Response response = Response.parse(connection);
@@ -165,10 +171,10 @@ public class Request {
 	 * @throws IOException if an error occurs
 	 */
 	public Response POST() throws IOException {
-		HttpURLConnection connection = null;
+		URLConnection connection = null;
 		try {
 			connection = connect();
-			connection.setRequestMethod("POST");
+			setRequestMethod(connection, "POST");
 			connection.setDoOutput(true);
 			connection.setUseCaches(false);
 			applyRequestProperties(connection);
@@ -189,10 +195,10 @@ public class Request {
 	 * @throws IOException if an error occurs
 	 */
 	public Response PUT() throws IOException {
-		HttpURLConnection connection = null;
+		URLConnection connection = null;
 		try {
 			connection = connect();
-			connection.setRequestMethod("PUT");
+			setRequestMethod(connection, "PUT");
 			connection.setDoOutput(true);
 			connection.setUseCaches(false);
 			applyRequestProperties(connection);
@@ -213,10 +219,10 @@ public class Request {
 	 * @throws IOException if an error occurs
 	 */
 	public Response DELETE() throws IOException {
-		HttpURLConnection connection = null;
+		URLConnection connection = null;
 		try {
 			connection = connect();
-			connection.setRequestMethod("DELETE");
+			setRequestMethod(connection, "DELETE");
 			connection.setUseCaches(false);
 			applyRequestProperties(connection);
 			Response response = Response.parse(connection);
@@ -229,13 +235,15 @@ public class Request {
 	}
 
 	/**
-	 * Sets this request object's URL.
+	 * Sets this request object's URL. If a protocol is not specified, HTTP
+	 * will be used. Valid protocols include HTTP and HTTPS.
 	 * 
 	 * @param urlString
 	 */
 	public void setURL(String urlString) {
-		if (!urlString.startsWith("http://")) {
-			urlString = "http://" + urlString;
+		if (!urlString.startsWith("http://") &&
+				!urlString.startsWith("https://")) {
+			urlString = "http://" + urlString; // HTTP is default protocol
 		}
 		try {
 			this.url = new URL(urlString);
@@ -245,7 +253,7 @@ public class Request {
 	}
 
 	/**
-	 * Sets this request object's URL.
+	 * Sets this request object's URL. Valid protocols include HTTP and HTTPS.
 	 * 
 	 * @param url the url
 	 */
@@ -260,6 +268,16 @@ public class Request {
 	 */
 	public String getURL() {
 		return url.toString();
+	}
+	
+	/**
+	 * Returns the protocol of this request object (either http or https). The
+	 * protocol of a request is automatically determined upon setting the URL.
+	 * 
+	 * @return the protocol
+	 */
+	public String getProtocol() {
+		return url.getProtocol();
 	}
 	
 	/**
@@ -317,7 +335,7 @@ public class Request {
 	 * @return the previous value associated with key, or null if there was none
 	 */
 	private String setRequestPropertyImmediate(String key, String value,
-			HttpURLConnection connection) {
+			URLConnection connection) {
 		connection.setRequestProperty(key, value);
 		return requestProperties.put(key, value);
 	}
@@ -699,13 +717,37 @@ public class Request {
 	public BodyType getBodyType() {
 		return bodyType;
 	}
+	
+	/**
+	 * A helper method that sets the connection's method, regardless of the
+	 * protocol being used.
+	 * 
+	 * @param connection
+	 * @param method
+	 */
+	private static void setRequestMethod(URLConnection connection,
+			String method) {
+		try {
+			switch (connection.getURL().getProtocol()) {
+			case "http": 
+				((HttpURLConnection) connection).setRequestMethod(method);
+				break;
+			case "https": 
+				((HttpsURLConnection) connection).setRequestMethod(method);
+				break;
+			default: throw new RuntimeException("Unsupported request method");
+			}
+		} catch (ProtocolException e) {
+			throw new RuntimeException("Attempt to set request method failed");
+		}
+	}
 
 	/**
 	 * Updates the connection's request properties.
 	 * 
 	 * @param connection
 	 */
-	private void applyRequestProperties(HttpURLConnection connection) {
+	private void applyRequestProperties(URLConnection connection) {
 		for (String key : requestProperties.keySet()) {
 			connection.setRequestProperty(key, requestProperties.get(key));
 		}
@@ -717,7 +759,7 @@ public class Request {
 	 * @param connection
 	 * @throws IOException if an error occurs
 	 */
-	private void addBody(HttpURLConnection connection) throws IOException {
+	private void addBody(URLConnection connection) throws IOException {
 		boolean contentTypeSet = false;
 		for (String key : requestProperties.keySet()) {
 			if (key.equalsIgnoreCase("Content-Type")) {
@@ -767,7 +809,7 @@ public class Request {
 	 * @param connection
 	 * @throws IOException if an error occurs
 	 */
-	private void addFormData(HttpURLConnection connection) throws IOException {
+	private void addFormData(URLConnection connection) throws IOException {
 		try (OutputStream output = connection.getOutputStream();
 				PrintWriter writer = new PrintWriter(
 						new OutputStreamWriter(output), false)) {
@@ -836,7 +878,7 @@ public class Request {
 	 * @param connection
 	 * @throws IOException if an error occurs
 	 */
-	private void addEncodedFormData(HttpURLConnection connection) throws IOException {
+	private void addEncodedFormData(URLConnection connection) throws IOException {
 		try (OutputStream output = connection.getOutputStream()) {
 			StringBuilder sb = new StringBuilder();
 			for (String key : encodedFormData.keySet()) {
@@ -859,7 +901,7 @@ public class Request {
 	 * @param connection
 	 * @throws IOException if an error occurs
 	 */
-	private void addRawData(HttpURLConnection connection) throws IOException {
+	private void addRawData(URLConnection connection) throws IOException {
 		try (OutputStream output = connection.getOutputStream()) {
 			String encodedData = rawData.toString();
 			output.write(encodedData.getBytes());
@@ -874,7 +916,7 @@ public class Request {
 	 * @param connection
 	 * @throws IOException if an error occurs
 	 */
-	private void addJsonData(HttpURLConnection connection) throws IOException {
+	private void addJsonData(URLConnection connection) throws IOException {
 		try (OutputStream output = connection.getOutputStream()) {
 			String encodedData = (jsonObjData != null ?
 					jsonObjData :jsonArrData).toString();
@@ -890,7 +932,7 @@ public class Request {
 	 * @param connection
 	 * @throws IOException if an error occurs
 	 */
-	private void addBinaryData(HttpURLConnection connection) throws IOException {
+	private void addBinaryData(URLConnection connection) throws IOException {
 		try (OutputStream output = connection.getOutputStream()) {
 			binaryData.writeTo(output);
 		} catch (IOException e) {
@@ -904,22 +946,29 @@ public class Request {
 	 * @return the connection
 	 * @throws IOException if an error occurs
 	 */
-	private HttpURLConnection connect() throws IOException {
+	private URLConnection connect() throws IOException {
 		if (url == null) {
 			throw new RuntimeException(
 					"Must specify a URL - call setURL(urlString)");
 		}
-		return (HttpURLConnection) url.openConnection();
+		return url.openConnection();
 	}
 
 	/**
-	 * A helper method that disconnects the given connection
+	 * A helper method that disconnects the given connection, regardless of the
+	 * protocol being used.
 	 * 
-	 * @param connection
+	 * @param connection the connection
 	 */
-	private static void disconnect(HttpURLConnection connection) {
+	private static void disconnect(URLConnection connection) {
 		if (connection != null) {
-			connection.disconnect();
+			String protocol = connection.getURL().getProtocol();
+			switch (protocol) {
+			case "http": ((HttpURLConnection) connection).disconnect(); break;
+			case "https": ((HttpsURLConnection) connection).disconnect(); break;
+			default: throw new UnsupportedOperationException(
+					"Request does not support " + protocol + " requests");
+			}
 		}
 	}
 

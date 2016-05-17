@@ -5,10 +5,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.net.ssl.HttpsURLConnection;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -27,10 +29,11 @@ public class Response {
 	private final String text;
 	private final JSONObject jsonObj;
 	private final JSONArray jsonArr;
-	private final String urlString;
 	private final Map<String, List<String>> headerFields;
 	private final int statusCode;
 	private final long date;
+
+	private final String urlString;
 
 	/**
 	 * Constructs a Response object with the specified data.
@@ -47,57 +50,85 @@ public class Response {
 	 *            the status/response code
 	 * @param date
 	 *            the date the response was sent, should be 0 if not known
+	 * @param protocol
+	 * 			  the protocol 
 	 */
 	public Response(String text, JSONObject jsonObj, JSONArray jsonArr,
-			String urlString, Map<String, List<String>> headerFields,
-			int statusCode, long date) {
+			Map<String, List<String>> headerFields, int statusCode, long date,
+			String urlString) {
 		this.text = text;
 		this.jsonObj = jsonObj;
 		this.jsonArr = jsonArr;
-		this.urlString = urlString;
 		this.headerFields = new HashMap<>(headerFields);
 		this.statusCode = statusCode;
 		this.date = date;
+		
+		this.urlString = urlString;
 	}
 
 	/**
 	 * Reads from the connection's InputStream and produces a response.
 	 * 
-	 * @param connection
-	 *            the connection
+	 * @param connection the connection
 	 * @return the response
 	 * @throws IOException if an error occurs
 	 */
-	public static Response parse(HttpURLConnection connection)
-			throws IOException {
+	public static Response parse(URLConnection connection) throws IOException {
 		try (InputStream in = connection.getInputStream()) {
 			String urlString = connection.getURL().toString();
 			Map<String, List<String>> headerFields =
 					connection.getHeaderFields();
-			int statusCode = connection.getResponseCode();
+			int statusCode = 0;
+			String protocol = connection.getURL().getProtocol();
+			switch (protocol) {
+			case "http": statusCode = 
+					((HttpURLConnection) connection).getResponseCode(); break;
+			case "https": statusCode = 
+					((HttpsURLConnection) connection).getResponseCode(); break;
+			default: throw new UnsupportedOperationException(
+					"Request does not support " + protocol + " requests");
+			}
 			long date = connection.getDate();
-			BufferedReader br = new BufferedReader(new InputStreamReader(in));
-			StringBuilder sb = new StringBuilder();
-			String line;
-			while ((line = br.readLine()) != null) {
-				sb.append(line + "\n");
-			}
-			String body = sb.toString();
-			JSONObject jsonObj = null;
-			JSONArray jsonArr = null;
-			try {
-				jsonObj = new JSONObject(body);
-			} catch (JSONException e1) {
-				try {
-					jsonArr = new JSONArray(body);
-				} catch (JSONException e2) {
-				}
-			}
-			return new Response(body, jsonObj, jsonArr, urlString,
-					headerFields, statusCode, date);
+			Object[] parsed = parseBody(in);
+			String body = (String) parsed[0];
+			JSONObject jsonObj = (JSONObject) parsed[1];
+			JSONArray jsonArr = (JSONArray) parsed[2];
+			return new Response(body, jsonObj, jsonArr, headerFields,
+					statusCode, date, urlString);
 		} catch (IOException e) {
 			throw e;
 		}
+	}
+	
+	/**
+	 * Parses the body and returns an Object array containing three elements:
+	 * 	the String pf the body,
+	 * 	the JSONObject of the body (if parsed successfully),
+	 *  and the JSONArray of the body (if parsed successfully).
+	 * 
+	 * @param in
+	 * @return
+	 * @throws IOException
+	 */
+	private static Object[] parseBody(InputStream in) throws IOException {
+		BufferedReader br = new BufferedReader(new InputStreamReader(in));
+		StringBuilder sb = new StringBuilder();
+		String line;
+		while ((line = br.readLine()) != null) {
+			sb.append(line + "\n");
+		}
+		String body = sb.toString();
+		JSONObject jsonObj = null;
+		JSONArray jsonArr = null;
+		try {
+			jsonObj = new JSONObject(body);
+		} catch (JSONException e1) {
+			try {
+				jsonArr = new JSONArray(body);
+			} catch (JSONException e2) {
+			}
+		}
+		return new Object[]{ body, jsonObj, jsonArr };
 	}
 
 	/**
@@ -148,15 +179,6 @@ public class Response {
 	}
 
 	/**
-	 * Returns the url string of the response.
-	 * 
-	 * @return the url string
-	 */
-	public String getURL() {
-		return urlString;
-	}
-
-	/**
 	 * Returns the header fields in the response's header.
 	 * 
 	 * @return a map of the header fields, mapping keys to values
@@ -199,6 +221,15 @@ public class Response {
 	 */
 	public long getDate() {
 		return date;
+	}
+
+	/**
+	 * Returns the url string of the request that generated this response.
+	 * 
+	 * @return the url string
+	 */
+	public String getURL() {
+		return urlString;
 	}
 
 	@Override
