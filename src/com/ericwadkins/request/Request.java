@@ -271,8 +271,9 @@ public class Request {
 	}
 	
 	/**
-	 * Returns the protocol of this request object (either http or https). The
-	 * protocol of a request is automatically determined upon setting the URL.
+	 * Returns the protocol of this request object (either "http" or "https").
+	 * The protocol of a request is automatically determined upon setting the
+	 * URL.
 	 * 
 	 * @return the protocol
 	 */
@@ -728,14 +729,16 @@ public class Request {
 	private static void setRequestMethod(URLConnection connection,
 			String method) {
 		try {
-			switch (connection.getURL().getProtocol()) {
+			String protocol = connection.getURL().getProtocol();
+			switch (protocol) {
 			case "http": 
 				((HttpURLConnection) connection).setRequestMethod(method);
 				break;
 			case "https": 
 				((HttpsURLConnection) connection).setRequestMethod(method);
 				break;
-			default: throw new RuntimeException("Unsupported request method");
+			default: throw new UnsupportedOperationException(
+					"Request does not support " + protocol + " requests");
 			}
 		} catch (ProtocolException e) {
 			throw new RuntimeException("Attempt to set request method failed");
@@ -949,7 +952,7 @@ public class Request {
 	private URLConnection connect() throws IOException {
 		if (url == null) {
 			throw new RuntimeException(
-					"Must specify a URL - call setURL(urlString)");
+					"Must specify a URL - call setURL()");
 		}
 		return url.openConnection();
 	}
