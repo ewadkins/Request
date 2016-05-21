@@ -1,6 +1,7 @@
 package com.ericwadkins.request;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -11,6 +12,10 @@ import java.util.List;
 import java.util.Map;
 
 import javax.net.ssl.HttpsURLConnection;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.html.HTMLDocument;
+import javax.swing.text.html.HTMLEditorKit;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -18,8 +23,8 @@ import org.json.JSONObject;
 /**
  * An immutable response object. This class takes in an HttpURLConnection, reads
  * from the input stream, and parses the body of the response into text, as well
- * as JSON data when applicable. It also stores other relevant information from
- * the header.
+ * as JSON and HTML when applicable. It also stores other relevant information
+ * from the header.
  * 
  * @author ericwadkins
  */
@@ -29,6 +34,7 @@ public class Response {
 	private final String text;
 	private final JSONObject jsonObj;
 	private final JSONArray jsonArr;
+	private final HTMLDocument html;
 	private final Map<String, List<String>> headerFields;
 	private final int statusCode;
 	private final long date;
@@ -44,6 +50,8 @@ public class Response {
 	 *            a JSONObject when applicable, should be null otherwise
 	 * @param jsonArr
 	 *            a JSONArray when applicable, should be null otherwise
+	 * @param html
+	 *            a HTMLDocument when applicable, should be null otherwise
 	 * @param headerFields
 	 *            a map of headers, which maps the header names to values
 	 * @param statusCode
@@ -54,11 +62,12 @@ public class Response {
 	 *            the url
 	 */
 	public Response(String text, JSONObject jsonObj, JSONArray jsonArr,
-			Map<String, List<String>> headerFields, int statusCode, long date,
-			String urlString) {
+			HTMLDocument html, Map<String, List<String>> headerFields,
+			int statusCode, long date, String urlString) {
 		this.text = text;
 		this.jsonObj = jsonObj;
 		this.jsonArr = jsonArr;
+		this.html = html;
 		this.headerFields = new HashMap<>(headerFields);
 		this.statusCode = statusCode;
 		this.date = date;
@@ -93,7 +102,8 @@ public class Response {
 			String body = (String) parsed[0];
 			JSONObject jsonObj = (JSONObject) parsed[1];
 			JSONArray jsonArr = (JSONArray) parsed[2];
-			return new Response(body, jsonObj, jsonArr, headerFields,
+			HTMLDocument html = (HTMLDocument) parsed[3];
+			return new Response(body, jsonObj, jsonArr, html, headerFields,
 					statusCode, date, urlString);
 		} catch (IOException e) {
 			throw e;
@@ -104,10 +114,11 @@ public class Response {
 	 * Parses the body and returns an Object array containing three elements:
 	 * 	the String pf the body,
 	 * 	the JSONObject of the body (if parsed successfully),
-	 *  and the JSONArray of the body (if parsed successfully).
+	 *  the JSONArray of the body (if parsed successfully),
+	 *  and the HTMLDocument of the nody (if parsed successfully).
 	 * 
 	 * @param in
-	 * @return
+	 * @return the content in different forms, as described above
 	 * @throws IOException
 	 */
 	private static Object[] parseBody(InputStream in) throws IOException {
@@ -128,7 +139,18 @@ public class Response {
 			} catch (JSONException e2) {
 			}
 		}
-		return new Object[]{ body, jsonObj, jsonArr };
+		InputStream stream = new ByteArrayInputStream(body.getBytes());
+		HTMLEditorKit kit = new HTMLEditorKit();
+		HTMLDocument html = null;
+		HTMLDocument doc = (HTMLDocument) kit.createDefaultDocument();
+		try {
+			kit.read(stream, doc, 0);
+		} catch (BadLocationException e) {
+		}
+		if (doc.getLength() > 0) {
+			html = doc;
+		}
+		return new Object[]{ body, jsonObj, jsonArr, html };
 	}
 
 	/**
@@ -149,6 +171,16 @@ public class Response {
 	 */
 	public boolean isJsonArray() {
 		return jsonArr != null;
+	}
+
+	/**
+	 * Whether the response could be parsed into a HTMLDocument or not.
+	 * 
+	 * @return true if this response could parse the body into a HTMLDocument,
+	 *         false otherwise
+	 */
+	public boolean isHtml() {
+		return html != null;
 	}
 
 	/**
@@ -176,6 +208,15 @@ public class Response {
 	 */
 	public JSONArray getJsonArray() {
 		return jsonArr;
+	}
+
+	/**
+	 * Returns the HTMLDocument if parsing the text into html was successful.
+	 * 
+	 * @return the HTMLDocument if it could be parsed, null otherwise
+	 */
+	public HTMLDocument getHtml() {
+		return html;
 	}
 
 	/**
