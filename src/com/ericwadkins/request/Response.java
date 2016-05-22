@@ -116,7 +116,8 @@ public class Response {
 	
 	/**
 	 * Parses the body and returns an Object array containing three elements:
-	 * 	the String pf the body,
+	 * 	the byte[] binary data pf the body,
+	 * 	the String text pf the body,
 	 * 	the JSONObject of the body (if parsed successfully),
 	 *  the JSONArray of the body (if parsed successfully),
 	 *  and the Jsoup Document of the body (if parsed successfully).
