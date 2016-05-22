@@ -1,7 +1,6 @@
 package com.ericwadkins.request;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -12,13 +11,11 @@ import java.util.List;
 import java.util.Map;
 
 import javax.net.ssl.HttpsURLConnection;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.html.HTMLDocument;
-import javax.swing.text.html.HTMLEditorKit;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 /**
  * An immutable response object. This class takes in an HttpURLConnection, reads
@@ -34,7 +31,7 @@ public class Response {
 	private final String text;
 	private final JSONObject jsonObj;
 	private final JSONArray jsonArr;
-	private final boolean isHtml;
+	private final Document html;
 	private final Map<String, List<String>> headerFields;
 	private final int statusCode;
 	private final long date;
@@ -50,8 +47,8 @@ public class Response {
 	 *            a JSONObject when applicable, should be null otherwise
 	 * @param jsonArr
 	 *            a JSONArray when applicable, should be null otherwise
-	 * @param isHtml
-	 *            should be true if and only if text can be parsed into HTML
+	 * @param html
+	 *            a Jsoup Document when applicable, should be null otherwise
 	 * @param headerFields
 	 *            a map of headers, which maps the header names to values
 	 * @param statusCode
@@ -62,12 +59,12 @@ public class Response {
 	 *            the url
 	 */
 	public Response(String text, JSONObject jsonObj, JSONArray jsonArr,
-			boolean isHtml, Map<String, List<String>> headerFields,
+			Document html, Map<String, List<String>> headerFields,
 			int statusCode, long date, String urlString) {
 		this.text = text;
 		this.jsonObj = jsonObj;
 		this.jsonArr = jsonArr;
-		this.isHtml = isHtml;
+		this.html = html;
 		this.headerFields = new HashMap<>(headerFields);
 		this.statusCode = statusCode;
 		this.date = date;
@@ -98,12 +95,12 @@ public class Response {
 					"Request does not support " + protocol + " requests");
 			}
 			long date = connection.getDate();
-			Object[] parsed = parseBody(in);
+			Object[] parsed = parseBody(in, urlString);
 			String body = (String) parsed[0];
 			JSONObject jsonObj = (JSONObject) parsed[1];
 			JSONArray jsonArr = (JSONArray) parsed[2];
-			boolean isHtml = parseHtml(body) != null;
-			return new Response(body, jsonObj, jsonArr, isHtml, headerFields,
+			Document html = (Document) parsed[3];
+			return new Response(body, jsonObj, jsonArr, html, headerFields,
 					statusCode, date, urlString);
 		} catch (IOException e) {
 			throw e;
@@ -115,13 +112,13 @@ public class Response {
 	 * 	the String pf the body,
 	 * 	the JSONObject of the body (if parsed successfully),
 	 *  the JSONArray of the body (if parsed successfully),
-	 *  and the HTMLDocument of the nody (if parsed successfully).
+	 *  and the Jsoup Document of the body (if parsed successfully).
 	 * 
 	 * @param in
 	 * @return the content in different forms, as described above
 	 * @throws IOException
 	 */
-	private static Object[] parseBody(InputStream in) throws IOException {
+	private static Object[] parseBody(InputStream in, String baseUrl) throws IOException {
 		BufferedReader br = new BufferedReader(new InputStreamReader(in));
 		StringBuilder sb = new StringBuilder();
 		String line;
@@ -139,22 +136,8 @@ public class Response {
 			} catch (JSONException e2) {
 			}
 		}
-		return new Object[]{ body, jsonObj, jsonArr };
-	}
-	
-	private static HTMLDocument parseHtml(String body) {
-		InputStream stream = new ByteArrayInputStream(body.getBytes());
-		HTMLEditorKit kit = new HTMLEditorKit();
-		HTMLDocument doc = (HTMLDocument) kit.createDefaultDocument();
-		doc.putProperty("IgnoreCharsetDirective", true);
-		try {
-			kit.read(stream, doc, 0);
-		} catch (BadLocationException | IOException e) {
-		}
-		if (doc.getLength() > 0) {
-			return doc;
-		}
-		return null;
+		Document html = Jsoup.parse(body, baseUrl);
+		return new Object[]{ body, jsonObj, jsonArr, html };
 	}
 
 	/**
@@ -178,13 +161,13 @@ public class Response {
 	}
 
 	/**
-	 * Whether the response could be parsed into a HTMLDocument or not.
+	 * Whether the response could be parsed into a Jsoup Document or not.
 	 * 
-	 * @return true if this response could parse the body into a HTMLDocument,
+	 * @return true if this response could parse the body into a Document,
 	 *         false otherwise
 	 */
 	public boolean isHtml() {
-		return isHtml;
+		return html != null;
 	}
 
 	/**
@@ -215,17 +198,16 @@ public class Response {
 	}
 
 	/**
-	 * Returns the HTMLDocument if parsing the text into html was successful.
-	 * Since HTMLDocument is a mutable class, each time this method is called
-	 * the text is re-parsed and a new HTMLDocument instance is returned.
+	 * Returns a clone of the Document if parsing the text into HTML was
+	 * successful.
 	 * 
-	 * @return the HTMLDocument if it could be parsed, null otherwise
+	 * @return the Jsoup Document if it could be parsed, null otherwise
 	 */
-	public HTMLDocument getHtml() {
-		if (!isHtml) {
+	public Document getHtml() {
+		if (html == null) {
 			return null;
 		}
-		return parseHtml(text);
+		return html.clone();
 	}
 
 	/**
