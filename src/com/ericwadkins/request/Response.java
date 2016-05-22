@@ -216,7 +216,7 @@ public class Response {
 
 	/**
 	 * Returns the HTMLDocument if parsing the text into html was successful.
-	 * Since HTMLDocumentis a mutable class, each time this method is called
+	 * Since HTMLDocument is a mutable class, each time this method is called
 	 * the text is re-parsed and a new HTMLDocument instance is returned.
 	 * 
 	 * @return the HTMLDocument if it could be parsed, null otherwise
