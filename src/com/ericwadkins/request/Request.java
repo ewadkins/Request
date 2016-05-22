@@ -60,6 +60,7 @@ public class Request {
 	private RequestMethod requestMethod = RequestMethod.GET;
 	private final Map<String, String> requestProperties = new HashMap<>();
 	private BodyType bodyType = BodyType.RAW;
+	private final Map<String, List<String>> queryParameters = new HashMap<>();
 	private final Map<String, List<FormData>> formData =
 			new HashMap<>();
 	private final Map<String, List<String>> encodedFormData = new HashMap<>();
@@ -245,6 +246,7 @@ public class Request {
 				!urlString.startsWith("https://")) {
 			urlString = "http://" + urlString; // HTTP is default protocol
 		}
+		urlString = extractQuery(urlString);
 		try {
 			this.url = new URL(urlString);
 		} catch (MalformedURLException e) {
@@ -258,7 +260,13 @@ public class Request {
 	 * @param url the url
 	 */
 	public void setURL(URL url) {
-		this.url = url;
+		if (url != null) {
+			try {
+				this.url = new URL(extractQuery(url.toString()));
+			} catch (MalformedURLException e) {
+				throw new IllegalArgumentException(e.getMessage());
+			}
+		}
 	}
 
 	/**
@@ -267,7 +275,7 @@ public class Request {
 	 * @return the URL
 	 */
 	public String getURL() {
-		return url.toString();
+		return appendQuery(url).toString();
 	}
 	
 	/**
@@ -326,22 +334,6 @@ public class Request {
 	}
 
 	/**
-	 * Sets a request property (or header) with the specified key and value and
-	 * immediately updates the connection. This method is used to assigned a
-	 * Content-Type when adding the body if one has not already been specified.
-	 * 
-	 * @param key
-	 * @param value
-	 * @param connection
-	 * @return the previous value associated with key, or null if there was none
-	 */
-	private String setRequestPropertyImmediate(String key, String value,
-			URLConnection connection) {
-		connection.setRequestProperty(key, value);
-		return requestProperties.put(key, value);
-	}
-
-	/**
 	 * Returns the request properties, in the form of a map from keys to values.
 	 * 
 	 * @return the request properties
@@ -358,6 +350,43 @@ public class Request {
 	 */
 	public String getRequestProperty(String key) {
 		return requestProperties.get(key);
+	}
+
+	/**
+	 * Adds a parameter with the specified key and value to the query.
+	 * 
+	 * @param key
+	 * @param value
+	 * @return the query values associated with the key
+	 */
+	public List<String> addQueryParameter(String key, String value) {
+		if (!queryParameters.containsKey(key)) {
+			queryParameters.put(key, new ArrayList<String>());
+		}
+		queryParameters.get(key).add(value);
+		return new ArrayList<>(queryParameters.get(key));
+	}
+
+	/**
+	 * Removes the value with the specified key from the query, if it exists.
+	 * 
+	 * @param key
+	 * @return the query values associated with the key, or null if there was
+	 * none
+	 */
+	public List<String> removeQueryParameter(String key) {
+		return queryParameters.remove(key);
+	}
+
+	/**
+	 * Removes all the parameters from the query.
+	 * 
+	 * @return the query parameters
+	 */
+	public Map<String, List<String>> clearQueryParameters() {
+		Map<String, List<String>> data = new HashMap<>(queryParameters);
+		queryParameters.clear();
+		return data;
 	}
 
 	/**
@@ -793,6 +822,22 @@ public class Request {
 	}
 
 	/**
+	 * Sets a request property (or header) with the specified key and value and
+	 * immediately updates the connection. This method is used to assigned a
+	 * Content-Type when adding the body if one has not already been specified.
+	 * 
+	 * @param key
+	 * @param value
+	 * @param connection
+	 * @return the previous value associated with key, or null if there was none
+	 */
+	private String setRequestPropertyImmediate(String key, String value,
+			URLConnection connection) {
+		connection.setRequestProperty(key, value);
+		return requestProperties.put(key, value);
+	}
+
+	/**
 	 * Updates the connection's request properties.
 	 * 
 	 * @param connection
@@ -800,6 +845,61 @@ public class Request {
 	private void applyRequestProperties(URLConnection connection) {
 		for (String key : requestProperties.keySet()) {
 			connection.setRequestProperty(key, requestProperties.get(key));
+		}
+	}
+	
+	/**
+	 * Saves the query string of the given url string and returns a string
+	 * without it.
+	 * 
+	 * @param urlString
+	 * @return the given string without the query string
+	 */
+	private String extractQuery(String urlString) {
+		int index = urlString.indexOf('?');
+		if (index >= 0) {
+			String queryString = urlString.substring(index + 1);
+			String[] parameters = queryString.split("&");
+			for (int i = 0; i < parameters.length; i++) {
+				String[] parameter = parameters[i].split("=");
+				String key = parameter[0];
+				String value = parameter[1];
+				if (!queryParameters.containsKey(key)) {
+					queryParameters.put(key, new ArrayList<String>());
+				}
+				queryParameters.get(key).add(value);
+			}
+			return urlString.substring(0, index);
+		}
+		return urlString;
+	}
+	
+	/**
+	 * Returns a URL object with the query string appended to the end of the
+	 * given url.
+	 * 
+	 * @param url
+	 * @return a url with the query string appended
+	 */
+	private URL appendQuery(URL url) {
+		StringBuilder sb = new StringBuilder("?");
+		try {
+			for (String key : queryParameters.keySet()) {
+				for (String value : queryParameters.get(key)) {
+					String encodedKey = 
+							URLEncoder.encode(key, defaultCharset.name());
+					String encodedValue = 
+							URLEncoder.encode(value, defaultCharset.name());
+					sb.append(encodedKey + "=" + encodedValue + "&");
+				}
+			}
+			String queryString = sb.toString();
+			if (sb.length() > 0) {
+				queryString = sb.substring(0, sb.length() - 1);
+			}
+			return new URL(url.toString() + queryString);
+		} catch (IOException e) {
+			throw new RuntimeException(e.getMessage());
 		}
 	}
 
@@ -1008,7 +1108,7 @@ public class Request {
 			throw new RuntimeException(
 					"Must specify a URL - call setURL()");
 		}
-		return url.openConnection();
+		return appendQuery(url).openConnection();
 	}
 
 	/**

@@ -1,9 +1,10 @@
 package com.ericwadkins.request;
 
-import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URLConnection;
 import java.util.HashMap;
@@ -28,6 +29,7 @@ import org.jsoup.nodes.Document;
 public class Response {
 
 	// Data storage
+	private final byte[] data;
 	private final String text;
 	private final JSONObject jsonObj;
 	private final JSONArray jsonArr;
@@ -41,6 +43,8 @@ public class Response {
 	/**
 	 * Constructs a Response object with the specified data.
 	 * 
+	 * @param data
+	 *            the binary data of the body
 	 * @param text
 	 *            the text of the body
 	 * @param jsonObj
@@ -58,9 +62,11 @@ public class Response {
 	 * @param urlString
 	 *            the url
 	 */
-	public Response(String text, JSONObject jsonObj, JSONArray jsonArr,
-			Document html, Map<String, List<String>> headerFields,
-			int statusCode, long date, String urlString) {
+	protected Response(byte[] data, String text, JSONObject jsonObj,
+			JSONArray jsonArr, Document html,
+			Map<String, List<String>> headerFields, int statusCode, long date,
+			String urlString) {
+		this.data = data;
 		this.text = text;
 		this.jsonObj = jsonObj;
 		this.jsonArr = jsonArr;
@@ -96,12 +102,13 @@ public class Response {
 			}
 			long date = connection.getDate();
 			Object[] parsed = parseBody(in, urlString);
-			String body = (String) parsed[0];
-			JSONObject jsonObj = (JSONObject) parsed[1];
-			JSONArray jsonArr = (JSONArray) parsed[2];
-			Document html = (Document) parsed[3];
-			return new Response(body, jsonObj, jsonArr, html, headerFields,
-					statusCode, date, urlString);
+			byte[] data = (byte[]) parsed[0];
+			String text = (String) parsed[1];
+			JSONObject jsonObj = (JSONObject) parsed[2];
+			JSONArray jsonArr = (JSONArray) parsed[3];
+			Document html = (Document) parsed[4];
+			return new Response(data, text, jsonObj, jsonArr, html,
+					headerFields, statusCode, date, urlString);
 		} catch (IOException e) {
 			throw e;
 		}
@@ -119,25 +126,57 @@ public class Response {
 	 * @throws IOException
 	 */
 	private static Object[] parseBody(InputStream in, String baseUrl) throws IOException {
-		BufferedReader br = new BufferedReader(new InputStreamReader(in));
+		/*BufferedReader br = new BufferedReader(new InputStreamReader(in));
 		StringBuilder sb = new StringBuilder();
 		String line;
 		while ((line = br.readLine()) != null) {
 			sb.append(line + "\n");
 		}
-		String body = sb.toString();
+		String body = sb.toString();*/
+		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+		int read;
+		while ((read = in.read()) != -1) {
+			buffer.write(read);
+		}
+		byte[] data = buffer.toByteArray();
+		String text = new String(data);
 		JSONObject jsonObj = null;
 		JSONArray jsonArr = null;
 		try {
-			jsonObj = new JSONObject(body);
+			jsonObj = new JSONObject(text);
 		} catch (JSONException e1) {
 			try {
-				jsonArr = new JSONArray(body);
+				jsonArr = new JSONArray(text);
 			} catch (JSONException e2) {
 			}
 		}
-		Document html = Jsoup.parse(body, baseUrl);
-		return new Object[]{ body, jsonObj, jsonArr, html };
+		Document html = Jsoup.parse(text, baseUrl);
+		return new Object[]{ data, text, jsonObj, jsonArr, html };
+	}
+	
+	/**
+	 * Writes the binary data read from this response's body to the
+	 * specified file object.
+	 * 
+	 * @param file
+	 * @throws IOException if an error occurs
+	 */
+	public void saveAsFile(File file) throws IOException {
+		FileOutputStream output = new FileOutputStream(file);
+		output.write(data);
+		output.close();
+	}
+
+	/**
+	 * Writes the binary data read from this response's body to the
+	 * specified file path.
+	 * 
+	 * @param filepath
+	 * @throws IOException if an error occurs
+	 */
+	public void saveAsFile(String filepath) throws IOException {
+		File file = new File(filepath);
+		saveAsFile(file);
 	}
 
 	/**
@@ -168,6 +207,17 @@ public class Response {
 	 */
 	public boolean isHtml() {
 		return html != null;
+	}
+
+	/**
+	 * Returns the body as received, as binary data.
+	 * 
+	 * @return the body's binary data
+	 */
+	public byte[] getBinaryData() {
+		byte[] copy = new byte[data.length];
+		System.arraycopy(data, 0, copy, 0, data.length);
+		return copy;
 	}
 
 	/**
