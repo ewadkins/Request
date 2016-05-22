@@ -34,7 +34,7 @@ public class Response {
 	private final String text;
 	private final JSONObject jsonObj;
 	private final JSONArray jsonArr;
-	private final HTMLDocument html;
+	private final boolean isHtml;
 	private final Map<String, List<String>> headerFields;
 	private final int statusCode;
 	private final long date;
@@ -50,8 +50,8 @@ public class Response {
 	 *            a JSONObject when applicable, should be null otherwise
 	 * @param jsonArr
 	 *            a JSONArray when applicable, should be null otherwise
-	 * @param html
-	 *            a HTMLDocument when applicable, should be null otherwise
+	 * @param isHtml
+	 *            should be true if and only if text can be parsed into HTML
 	 * @param headerFields
 	 *            a map of headers, which maps the header names to values
 	 * @param statusCode
@@ -62,12 +62,12 @@ public class Response {
 	 *            the url
 	 */
 	public Response(String text, JSONObject jsonObj, JSONArray jsonArr,
-			HTMLDocument html, Map<String, List<String>> headerFields,
+			boolean isHtml, Map<String, List<String>> headerFields,
 			int statusCode, long date, String urlString) {
 		this.text = text;
 		this.jsonObj = jsonObj;
 		this.jsonArr = jsonArr;
-		this.html = html;
+		this.isHtml = isHtml;
 		this.headerFields = new HashMap<>(headerFields);
 		this.statusCode = statusCode;
 		this.date = date;
@@ -102,8 +102,8 @@ public class Response {
 			String body = (String) parsed[0];
 			JSONObject jsonObj = (JSONObject) parsed[1];
 			JSONArray jsonArr = (JSONArray) parsed[2];
-			HTMLDocument html = (HTMLDocument) parsed[3];
-			return new Response(body, jsonObj, jsonArr, html, headerFields,
+			boolean isHtml = parseHtml(body) != null;
+			return new Response(body, jsonObj, jsonArr, isHtml, headerFields,
 					statusCode, date, urlString);
 		} catch (IOException e) {
 			throw e;
@@ -139,18 +139,22 @@ public class Response {
 			} catch (JSONException e2) {
 			}
 		}
+		return new Object[]{ body, jsonObj, jsonArr };
+	}
+	
+	private static HTMLDocument parseHtml(String body) {
 		InputStream stream = new ByteArrayInputStream(body.getBytes());
 		HTMLEditorKit kit = new HTMLEditorKit();
-		HTMLDocument html = null;
 		HTMLDocument doc = (HTMLDocument) kit.createDefaultDocument();
+		doc.putProperty("IgnoreCharsetDirective", true);
 		try {
 			kit.read(stream, doc, 0);
-		} catch (BadLocationException e) {
+		} catch (BadLocationException | IOException e) {
 		}
 		if (doc.getLength() > 0) {
-			html = doc;
+			return doc;
 		}
-		return new Object[]{ body, jsonObj, jsonArr, html };
+		return null;
 	}
 
 	/**
@@ -180,7 +184,7 @@ public class Response {
 	 *         false otherwise
 	 */
 	public boolean isHtml() {
-		return html != null;
+		return isHtml;
 	}
 
 	/**
@@ -212,11 +216,16 @@ public class Response {
 
 	/**
 	 * Returns the HTMLDocument if parsing the text into html was successful.
+	 * Since HTMLDocumentis a mutable class, each time this method is called
+	 * the text is re-parsed and a new HTMLDocument instance is returned.
 	 * 
 	 * @return the HTMLDocument if it could be parsed, null otherwise
 	 */
 	public HTMLDocument getHtml() {
-		return html;
+		if (!isHtml) {
+			return null;
+		}
+		return parseHtml(text);
 	}
 
 	/**
