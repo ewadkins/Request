@@ -334,22 +334,43 @@ public class Request {
 	}
 
 	/**
+	 * Removes the request property with the specified key, if it exists.
+	 * 
+	 * @param key
+	 * @return the value associated with the key, or null if there was none
+	 */
+	public String removeRequestProperty(String key) {
+		return requestProperties.remove(key);
+	}
+
+	/**
+	 * Removes all the previously set request properties.
+	 * 
+	 * @return the request properties
+	 */
+	public Map<String, String> clearRequestProperties() {
+		Map<String, String> data = new HashMap<>(requestProperties);
+		requestProperties.clear();
+		return data;
+	}
+
+	/**
+	 * Returns the value of request property with the specified key.
+	 * 
+	 * @param key
+	 * @return the request property value, or null if there is none
+	 */
+	public String getRequestProperty(String key) {
+		return requestProperties.get(key);
+	}
+
+	/**
 	 * Returns the request properties, in the form of a map from keys to values.
 	 * 
 	 * @return the request properties
 	 */
 	public Map<String, String> getRequestProperties() {
 		return new HashMap<>(requestProperties);
-	}
-
-	/**
-	 * Returns the request property with the specified key.
-	 * 
-	 * @param key
-	 * @return the request property, or null if it doesn't exist
-	 */
-	public String getRequestProperty(String key) {
-		return requestProperties.get(key);
 	}
 
 	/**
@@ -386,6 +407,29 @@ public class Request {
 	public Map<String, List<String>> clearQueryParameters() {
 		Map<String, List<String>> data = new HashMap<>(queryParameters);
 		queryParameters.clear();
+		return data;
+	}
+
+	/**
+	 * Returns the value of the query parameter with the specified key.
+	 * 
+	 * @param key
+	 * @return the query parameter value, or null if there is none
+	 */
+	public List<String> getQueryParameter(String key) {
+		return new ArrayList<>(queryParameters.get(key));
+	}
+	
+	/**
+	 * Returns a copy of the query parameters.
+	 * 
+	 * @return the query parameters
+	 */
+	public Map<String, List<String>> getQueryParameters() {
+		Map<String, List<String>> data = new HashMap<>();
+		for (String key : queryParameters.keySet()) {
+			data.put(key, new ArrayList<>(queryParameters.get(key)));
+		}
 		return data;
 	}
 
@@ -471,25 +515,34 @@ public class Request {
 	}
 
 	/**
-	 * Removes the value with the specified key from the form, if it exists.
+	 * Removes the entry with the specified key from the form, if it exists.
 	 * 
 	 * @param key
 	 * @return the form data associated with the key, or null if there was none
 	 */
-	public List<FormData> removeFormField(
-			String key) {
+	public List<FormData> removeFormEntry(String key) {
 		return formData.remove(key);
 	}
 
 	/**
-	 * Removes all the values from the form.
+	 * Removes all the entries from the form.
 	 * 
 	 * @return the form data
 	 */
-	public Map<String, List<FormData>> clearForm() {
+	public Map<String, List<FormData>> clearFormEntries() {
 		Map<String, List<FormData>> data = new HashMap<>(formData);
 		formData.clear();
 		return data;
+	}
+
+	/**
+	 * Returns the values of the form data with the specified key.
+	 * 
+	 * @param key
+	 * @return the form data values, or null if there are none
+	 */
+	public List<FormData> getFormEntry(String key) {
+		return new ArrayList<>(formData.get(key));
 	}
 	
 	/**
@@ -497,7 +550,7 @@ public class Request {
 	 * 
 	 * @return the form data
 	 */
-	public Map<String, List<FormData>> getForm() {
+	public Map<String, List<FormData>> getFormEntries() {
 		Map<String, List<FormData>> data = new HashMap<>();
 		for (String key : formData.keySet()) {
 			data.put(key, new ArrayList<>(formData.get(key)));
@@ -545,9 +598,19 @@ public class Request {
 		encodedFormData.clear();
 		return data;
 	}
+
+	/**
+	 * Returns the values of the encoded URL form data with the specified key.
+	 * 
+	 * @param key
+	 * @return the form data values, or null if there are none
+	 */
+	public List<String> getEncodedField(String key) {
+		return new ArrayList<>(encodedFormData.get(key));
+	}
 	
 	/**
-	 * Returns a copy of the encoded URL form data
+	 * Returns a copy of the encoded URL form data.
 	 * 
 	 * @return the encoded URL form data
 	 */
