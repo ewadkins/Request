@@ -496,12 +496,38 @@ public class Request {
 	}
 
 	/**
+	 * Adds a raw file to the form with the specified key and charset, and
+	 * updates the body to use multipart/form-data in the future.
+	 * 
+	 * @param key
+	 * @param filepath
+	 * @param charset
+	 * @return the form data associated with the key
+	 */
+	public List<FormData> addFormRawFile(String key, String filepath,
+			Charset charset) {
+		File file = new File(filepath);
+		return addFormRawFile(key, file, charset);
+	}
+
+	/**
+	 * Adds a raw file to the form with the specified key, and updates the body
+	 * to use multipart/form-data in the future.
+	 * 
+	 * @param key
+	 * @param filepath
+	 * @return the form data associated with the key
+	 */
+	public List<FormData> addFormRawFile(String key, String filepath) {
+		return addFormRawFile(key, filepath, defaultCharset);
+	}
+
+	/**
 	 * Adds a binary file to the form with the specified key and charset, and
 	 * updates the body to use multipart/form-data in the future.
 	 * 
 	 * @param key
 	 * @param file
-	 * @param defaultCharset
 	 * @return the form data associated with the key
 	 */
 	public List<FormData> addFormBinaryFile(String key, File file) {
@@ -512,6 +538,19 @@ public class Request {
 		formData.get(key).add(
 				new FormData(file, FormDataType.BINARY_FILE, defaultCharset));
 		return new ArrayList<>(formData.get(key));
+	}
+
+	/**
+	 * Adds a binary file to the form with the specified key and charset, and
+	 * updates the body to use multipart/form-data in the future.
+	 * 
+	 * @param key
+	 * @param filepath
+	 * @return the form data associated with the key
+	 */
+	public List<FormData> addFormBinaryFile(String key, String filepath) {
+		File file = new File(filepath);
+		return addFormBinaryFile(key, file);
 	}
 
 	/**
