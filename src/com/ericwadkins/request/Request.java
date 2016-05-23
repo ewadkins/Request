@@ -674,6 +674,22 @@ public class Request {
 	}
 
 	/**
+	 * Appends the file's contents to the raw data with the specified charset,
+	 * and updates the body to use text/plain in the future.
+	 * 
+	 * @param file
+	 * @param charset
+	 * @return the raw data
+	 * @throws IOException if an error occurs
+	 */
+	public String addRawData(File file, Charset charset) throws IOException {
+		bodyType = BodyType.RAW;
+		rawData.append(new String(Files.readAllBytes(Paths.get(
+				file.getAbsolutePath())), charset));
+		return rawData.toString();
+	}
+
+	/**
 	 * Appends the file's contents to the raw data, and updates the body to use
 	 * text/plain in the future.
 	 * 
@@ -682,10 +698,7 @@ public class Request {
 	 * @throws IOException if an error occurs
 	 */
 	public String addRawData(File file) throws IOException {
-		bodyType = BodyType.RAW;
-		rawData.append(new String(Files.readAllBytes(Paths.get(
-				file.getAbsolutePath())), defaultCharset));
-		return rawData.toString();
+		return addRawData(file, defaultCharset);
 	}
 
 	/**
@@ -856,14 +869,14 @@ public class Request {
 	/**
 	 * Updates the body to use multipart/form-data in the future.
 	 */
-	public void useForm() {
+	public void useFormData() {
 		bodyType = BodyType.FORM_DATA;
 	}
 
 	/**
 	 * Updates the body to use application/x-www-form-urlencoded in the future.
 	 */
-	public void useEncodedForm() {
+	public void useEncodedFormData() {
 		bodyType = BodyType.X_WWW_FORM_URLENCODED;
 	}
 
@@ -877,7 +890,7 @@ public class Request {
 	/**
 	 * Updates the body to use application/json in the future.
 	 */
-	public void useJson() {
+	public void useJsonData() {
 		bodyType = BodyType.JSON;
 	}
 
