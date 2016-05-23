@@ -144,6 +144,17 @@ public class Request {
 	}
 
 	/**
+	 * A static convenience method for quick GET requests to the specified URL.
+	 * 
+	 * @param url the URL object
+	 * @return the response object
+	 * @throws IOException if an error occurs
+	 */
+	public static Response GET(URL url) throws IOException {
+		return new Request(url).GET();
+	}
+
+	/**
 	 * Sends a GET request with this request object.
 	 * 
 	 * @return the response object
