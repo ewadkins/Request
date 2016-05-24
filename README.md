@@ -5,28 +5,31 @@ A simple library used for sending HTTP and HTTPS requests, with many data manage
 
 ### Table of contents
 
-* [The Request Object](#)
-  * [Constructors](#)
-  * [Headers/Request Properties](#)
-  * [Query Parameters](#)
-  * [Adding the Body](#)
-    * [Form Data](#)
-    * [URL-Encoded Form Data](#)
-    * [Raw Data](#)
-    * [JSON Data](#)
-    * [Binary Data](#)
-  * [Sending the Request](#)
-* [The Response Object](#)
-  * [The Head](#)
-  * [The Body](#)
-    * [Getting the Response](#)
-    * [Saving as a File](#)
+* [The Request Object](#1)
+  * [Constructors](#2)
+  * [Headers/Request Properties](#3)
+  * [Query Parameters](#4)
+  * [Adding the Body](#5)
+    * [Form Data](#6)
+    * [URL-Encoded Form Data](#7)
+    * [Raw Data](#8)
+    * [JSON Data](#9)
+    * [Binary Data](#10)
+  * [Sending the Request](#11)
+* [The Response Object](#12)
+  * [The Head](#13)
+  * [The Body](#14)
+    * [Getting the Response](#15)
+    * [Saving as a File](#16)
+* [License](#17)
 
 -
+<a id="1"></a>
 ### The Request Object
 
 This class provides methods to send HTTP and HTTPS requests.
 
+<a id="2"></a>
 #### Constructors
 
 You can construct a Request object in a couple different ways. The first is to pass it the URL string:
@@ -52,7 +55,9 @@ request.setURL("http://www.google.com");
 
 The URL string can be retrieved later with the method `getURL`, as well as the protocol with `getProtocol`.
 
+<a id="3"></a>
 #### Headers/Request Properties
+
 To set headers (a.k.a. request properties), simply use the `setRequestProperty` method:
 
 ```java
@@ -83,6 +88,7 @@ Also, to get a map of all the request properties to their values, use `getReques
 Map<String, String> propertyMap = request.getRequestProperties();
 ```
 
+<a id="4"></a>
 #### Query Parameters
 
 Request obviously allows URLs with query parameters included to be passed into the constructor. However, you can also add them programmatically using the `addQueryParameter` method:
@@ -115,12 +121,14 @@ Finally, if you want to retrieve all parameters in the query, use the method `ge
 Map<String, List<String>> queryMap = request.getQueryParameters();
 ```
 
+<a id="5"></a>
 #### Adding the Body
 
 While a body is not necessary for some requests, it is for many. Multiple body types are supported by Request. If several types are added to the same request object, the last type to be added is used, unless you explicitly declare which body type should be used.
 
 *Note:* Many of the methods presented below will throw a `IOException` if an error occurs, and this is not made explicit.
 
+<a id="6"></a>
 * **Form Data (mutlipart/form-data)**
   
   Request supports adding fields, raw files, and binary files as form data using `addFormField`, `addFormRawFile`, and `addFormBinaryFile`. For raw or binary files, you can pass in a file path or a `File` object. Additionally, for fields or raw files you can include an optional third argument which is the charset to be used:
@@ -169,6 +177,7 @@ While a body is not necessary for some requests, it is for many. Multiple body t
   
   Upon sending the request, if the header `Content-Type` is not already set and form data is being used, Request will set it to `mutlipart/form-data`.
 
+<a id="7"></a>
 * **URL-Encoded Form Data (application/x-www-form-urlencoded)**
   
   To add a field to the URL-encoded form data, use the method `addEncodedField`:
@@ -181,6 +190,7 @@ While a body is not necessary for some requests, it is for many. Multiple body t
   
   Upon sending the request, if the header `Content-Type` is not already set and URL-encoded form data is being used, Request will set it to `application/x-www-form-urlencoded`.
 
+<a id="8"></a>
 * **Raw Data (text/plain)**
   
   To append raw data to the request body, use `addRawData`, which takes as a parameter a `String` or a `File` object. When using the File object as parameter, you can include an optional second argument which is the charset to be used:
@@ -195,6 +205,7 @@ While a body is not necessary for some requests, it is for many. Multiple body t
   
   Upon sending the request, if the header `Content-Type` is not already set and raw data is being used, Request will set it to `text/plain`.
 
+<a id="9"></a>
 * **JSON Data (application/json)**
   
   To add JSON data to the request body, use `addJsonData`, which takes as a parameter a `JSONObject` or `JSONArray` from the **JSON-java** library:
@@ -227,6 +238,7 @@ While a body is not necessary for some requests, it is for many. Multiple body t
   
   Upon sending the request, if the header `Content-Type` is not already set and JSON data is being used, Request will set it to `application/json`.
 
+<a id="10"></a>
 * **Binary Data (application/octet-stream)**
   
   To append binary data to the request body, use `addBinaryData`, which takes as a parameter a `byte[]` or a `File` object:
@@ -252,6 +264,7 @@ BodyType.JSON
 BodyType.BINARY
 ```
 
+<a id="11"></a>
 #### Sending the Request
 
 Request intentionally makes it very simply to setup and send requests using the Request object. Once the request is setup (request properties are set, body is added, etc.), sending it is just a matter of calling a single method. When one of these methods is called, Request will create a new URLConnection internally, and initialize it using the properties you have set. The body is then added to the request, the request is sent, and as soon as a response is received, a Response object is constructed and returned.
@@ -308,10 +321,12 @@ Response response = request.send();
 **Note:** the default method is GET.
 
 -
+<a id="12"></a>
 ### The Response Object
 
 This immutable class provides methods to access the response of a request, and attempts to automatically parse it into useful forms such as JSON and HTML data types.
 
+<a id="13"></a>
 #### The Head
 
 To get the values of a specific header, use the method `getHeaderField`:
@@ -328,8 +343,10 @@ Map<String, List<String>> headerMap = response.getHeaderFields();
 
 You can also use `getStatusLine` to get the status line (the first line of the response), `getStatusCode` to get the status of the response, `getDate` to get the time and date that the response was sent, and `getURL` to get the URL the response came from.
 
+<a id="14"></a>
 #### The Body
 
+<a id="15"></a>
 ##### Getting the Response
 
 To get the binary data of the body of the response, use the method `getBinaryData`:
@@ -359,6 +376,7 @@ HTMLDocument html = response.getHtml(); // if it's HTML
 
 Access to the original data in binary and text form, as well as parsed JSON and HTML data types is an integral part of this library, and reduces the work required by the user significantly.
 
+<a id="16"></a>
 ##### Saving as a File
 
 If you want to save the response to a file, use the method `saveAsFile`, which takes as a parameter a `String` that is the file path or a `File` object:
@@ -381,6 +399,7 @@ The documentation for **JSON-java** and **jsoup** can be found below:
 * [jsoup documentation](https://jsoup.org/)
 
 -
+<a id="17"></a>
 ## License
 
 Copyright &copy; 2016 [Eric Wadkins](http://www.ericwadkins.com/)
