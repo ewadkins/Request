@@ -85,7 +85,7 @@ public class Response {
 	 * @return the response
 	 * @throws IOException if an error occurs
 	 */
-	public static Response parse(URLConnection connection) throws IOException {
+	protected static Response parse(URLConnection connection) throws IOException {
 		try (InputStream in = connection.getInputStream()) {
 			String urlString = connection.getURL().toString();
 			Map<String, List<String>> headerFields =
